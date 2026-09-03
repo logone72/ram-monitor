@@ -372,7 +372,7 @@ git commit -m "chore: initialize RAM Monitor"
 - Produces: `MemoryMetric`, `BundleIdentity`, `ProcessSample`, `ProcessGroup`, `SystemMemorySample`, `RawMonitorSample`, `ChartSlice`, `MonitorSnapshot`, `SnapshotBuilder.build(raw:metric:topSliceCount:)`
 - Consumes: 없음
 
-- [ ] **Step 1: Physical Footprint 차트 불변 조건 테스트 작성**
+- [x] **Step 1: Physical Footprint 차트 불변 조건 테스트 작성**
 
 ```swift
 import Testing
@@ -399,7 +399,7 @@ struct SnapshotBuilderTests {
 }
 ```
 
-- [ ] **Step 2: Resident Size 분모와 top 8 테스트 작성**
+- [x] **Step 2: Resident Size 분모와 top 8 테스트 작성**
 
 ```swift
 extension SnapshotBuilderTests {
@@ -416,7 +416,7 @@ extension SnapshotBuilderTests {
 }
 ```
 
-- [ ] **Step 3: 테스트가 모델 부재로 실패하는지 확인**
+- [x] **Step 3: 테스트가 모델 부재로 실패하는지 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -426,7 +426,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: `MemoryMetric` 또는 `SnapshotBuilder`를 찾지 못해 compile failure.
 
-- [ ] **Step 4: 모델과 builder 최소 구현**
+- [x] **Step 4: 모델과 builder 최소 구현**
 
 다음 공개 표면을 정확히 구현한다.
 
@@ -585,7 +585,7 @@ private extension ProcessSample {
 }
 ```
 
-- [ ] **Step 5: builder 테스트 통과 확인**
+- [x] **Step 5: builder 테스트 통과 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -595,7 +595,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: `TEST SUCCEEDED`.
 
-- [ ] **Step 6: 전체 검증 후 명시적으로 승인된 경우 commit**
+- [x] **Step 6: 전체 검증 후 명시적으로 승인된 경우 commit**
 
 ```bash
 make verify
