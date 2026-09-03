@@ -74,10 +74,11 @@ make verify
 - `format`: Swift 소스 포맷 적용
 - `format-check`: 포맷 차이 검사
 - `lint`: SwiftLint 경고를 실패로 처리
+- `release-check`: 배포 스크립트 Bash 문법 검사
 - `build`: macOS 앱 빌드
 - `test`: unit·UI test 실행 및 code coverage 수집
 - `analyze`: Xcode 정적 분석
-- `check`: whitespace, 포맷, lint 검사
+- `check`: whitespace, 포맷, lint, 배포 스크립트 검사
 - `verify`: doctor, check, build, test, analyze 전체 실행
 
 ## 로컬 Git 검사

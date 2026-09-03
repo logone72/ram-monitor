@@ -221,7 +221,7 @@ SWIFT_PATHS := RAMMonitor RAMMonitorTests RAMMonitorUITests
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
 
-.PHONY: bootstrap doctor format format-check lint build test analyze check verify
+.PHONY: bootstrap doctor format format-check lint release-check build test analyze check verify
 
 bootstrap:
 	brew bundle --file=Brewfile
@@ -246,6 +246,9 @@ format-check:
 lint:
 	swiftlint lint --strict --config .swiftlint.yml
 
+release-check:
+	bash -n scripts/build-release.sh
+
 build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) build
 
@@ -255,7 +258,7 @@ test:
 analyze:
 	xcodebuild analyze -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA)
 
-check: format-check lint
+check: format-check lint release-check
 	git diff --check
 	git diff --cached --check
 
@@ -1158,7 +1161,7 @@ git commit -m "docs: prepare RAM Monitor public project"
 - Produces: `RAM-Monitor-0.1.0.dmg`, SHA-256, GitHub Release, 설치 가능한 personal cask
 - Consumes: Release configuration의 `RAM Monitor.app`
 
-- [ ] **Step 1: release script self-check 작성**
+- [x] **Step 1: release script self-check 작성**
 
 스크립트의 `--verify-only` 모드가 앱의 두 아키텍처, code signature, DMG 무결성을 검사하고 하나라도 실패하면 non-zero로 종료하게 한다.
 
@@ -1168,11 +1171,11 @@ git commit -m "docs: prepare RAM Monitor public project"
 
 Expected before implementation: 실행 파일 부재로 실패.
 
-- [ ] **Step 2: build·ad-hoc sign·DMG 생성 구현**
+- [x] **Step 2: build·ad-hoc sign·DMG 생성 구현**
 
 [`release.md`](release.md)의 7단계를 `set -euo pipefail`인 shell script로 구현한다. 임시 staging 경로는 `mktemp -d`로 만들고 `trap`으로 정리한다.
 
-- [ ] **Step 3: release script 검증**
+- [x] **Step 3: release script 검증**
 
 ```bash
 ./scripts/build-release.sh 0.1.0
@@ -1183,7 +1186,7 @@ hdiutil verify 'release/RAM-Monitor-0.1.0.dmg'
 
 Expected: `arm64 x86_64`, codesign 성공, DMG verify 성공.
 
-- [ ] **Step 4: tag release workflow 작성**
+- [x] **Step 4: tag release workflow 작성**
 
 `v*` tag에서 checkout → `make verify` → `build-release.sh` → GitHub Release asset 업로드 순서로 실행한다. workflow permission은 `contents: write`만 부여한다.
 
@@ -1198,11 +1201,15 @@ brew install --cask logone72/tap/ram-monitor
 
 Expected: audit 통과, `/Applications/RAM Monitor.app` 설치.
 
+로컬 산출물 `release/ram-monitor.rb`는 실제 DMG checksum으로 생성되며 임시 Tap에서 `brew style`과 `brew audit --cask --strict`를 통과했다. 공개 Release URL과 `logone72/homebrew-tap` 생성 후 온라인 audit·설치를 수행한다.
+
 - [ ] **Step 6: 깨끗한 사용자 설치 흐름 확인**
 
 GitHub DMG와 Homebrew 설치를 각각 수행하고 우클릭 Open 또는 Privacy & Security의 Open Anyway 안내로 최초 실행되는지 확인한다. 앱이 관리자 암호를 요구하지 않는지 확인한다.
 
-- [ ] **Step 7: full verification**
+로컬 Release 앱 실행 smoke test는 통과했다. 격리 속성이 붙는 실제 다운로드와 깨끗한 사용자 환경 검증은 공개 Release 발행 후 수행한다.
+
+- [x] **Step 7: full verification**
 
 ```bash
 make verify
@@ -1210,11 +1217,16 @@ make verify
 
 Expected: 모든 테스트 통과.
 
-- [ ] **Step 8: 명시적으로 승인된 경우 release commit과 tag**
+- [x] **Step 8: 명시적으로 승인된 release commit**
 
 ```bash
 git add scripts .github README.md
 git commit -m "build: add unsigned DMG release pipeline"
+```
+
+- [ ] **Step 9: 명시적으로 승인된 tag와 원격 release**
+
+```bash
 git tag v0.1.0
 ```
 

@@ -49,6 +49,18 @@ brew tap logone72/tap
 brew install --cask ram-monitor
 ```
 
+## Build a release
+
+Run the quality gate first, then build an ad-hoc signed Universal 2 release:
+
+```bash
+make verify
+./scripts/build-release.sh 0.1.0
+./scripts/build-release.sh --verify-only release/RAM-Monitor-0.1.0.dmg
+```
+
+The script writes the app, DMG, `SHA256SUMS`, and a checksum-pinned `ram-monitor.rb` cask to `release/`. Pushing a `vX.Y.Z` tag runs the same verification and publishes those release assets; copying the generated cask into `logone72/homebrew-tap/Casks/ram-monitor.rb` makes it available from the personal Tap.
+
 ## Privacy and permissions
 
 RAM Monitor reads the local process list and Mach process accounting values needed to calculate RAM and CPU usage. The App Sandbox is disabled because a sandboxed process cannot inspect system-wide processes. No process snapshots are written to disk or sent over the network; only UI preferences are stored in `UserDefaults`.

@@ -21,6 +21,7 @@ Apple은 서명하지 않은 macOS 앱을 직접 복사해 배포하는 방식�
 
 - `RAM-Monitor-X.Y.Z.dmg`
 - `SHA256SUMS`
+- checksum이 채워진 `ram-monitor.rb`
 - GitHub Release notes
 - `logone72/homebrew-tap`의 `Casks/ram-monitor.rb`
 
@@ -34,7 +35,7 @@ Apple은 서명하지 않은 macOS 앱을 직접 복사해 배포하는 방식�
 4. 앱과 `/Applications` 바로가기를 staging 폴더에 배치
 5. `hdiutil create`로 DMG 생성
 6. `lipo`, `codesign`, `hdiutil verify` 검사
-7. SHA-256 출력
+7. SHA-256과 personal Tap용 cask 출력
 
 DMG 배경 이미지와 별도 installer는 만들지 않는다.
 
@@ -47,8 +48,10 @@ cask "ram-monitor" do
 
   url "https://github.com/logone72/ram-monitor/releases/download/v#{version}/RAM-Monitor-#{version}.dmg"
   name "RAM Monitor"
-  desc "RAM-focused macOS process monitor with grouped subprocesses"
+  desc "RAM-focused process monitor with grouped subprocesses"
   homepage "https://github.com/logone72/ram-monitor"
+
+  depends_on macos: :sonoma
 
   app "RAM Monitor.app"
 
@@ -67,6 +70,8 @@ brew install --cask ram-monitor
 ```
 
 `logone72/homebrew-tap`은 V1 release 작업에서 생성한다. release를 만들기 전에 `logone72/ram-monitor`를 공개로 전환하고 cask URL이 인증 없이 다운로드되는지 확인한다.
+
+스크립트가 생성한 `release/ram-monitor.rb`를 Tap의 `Casks/ram-monitor.rb`로 복사한다. 이 파일은 같은 실행에서 만든 DMG의 실제 SHA-256을 포함하므로 다른 빌드의 checksum을 재사용하지 않는다.
 
 ## V2: Developer ID 가입 후
 

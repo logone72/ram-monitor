@@ -6,7 +6,7 @@ SWIFT_PATHS := RAMMonitor RAMMonitorTests RAMMonitorUITests
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
 
-.PHONY: bootstrap doctor format format-check lint build test analyze check verify
+.PHONY: bootstrap doctor format format-check lint release-check build test analyze check verify
 
 bootstrap:
 	brew bundle --file=Brewfile
@@ -31,6 +31,9 @@ format-check:
 lint:
 	swiftlint lint --strict --config .swiftlint.yml
 
+release-check:
+	bash -n scripts/build-release.sh
+
 build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) build
 
@@ -40,7 +43,7 @@ test:
 analyze:
 	xcodebuild analyze -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA)
 
-check: format-check lint
+check: format-check lint release-check
 	git diff --check
 	git diff --cached --check
 

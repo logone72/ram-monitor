@@ -6,7 +6,7 @@
 
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
-- 다음 작업: 최종 검증
+- 다음 작업: 공개 GitHub Release와 personal Tap 설치 검증
 - 마지막 갱신: 2026-09-03
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
