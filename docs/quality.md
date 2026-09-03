@@ -53,8 +53,10 @@ Activity Monitor와 그룹 경계가 같은 안정된 앱은 Physical Footprint 
 
 - 기본 2초 간격에서 60초 동안 RAM Monitor 자체 평균 CPU 2% 미만
 - 새로고침 중 스크롤과 그룹 펼치기가 눈에 띄게 멈추지 않음
-- bundle cache와 CPU 이전 샘플에서 사라진 process identity가 계속 증가하지 않음
+- bundle·process info cache와 CPU 이전 샘플에서 사라진 process identity가 계속 증가하지 않음
 - 갱신 `Task`는 창 종료 시 취소됨
+
+2026-09-03 로컬 Release 측정: 기본 2초 갱신으로 60초 동안 CPU time 1.05초, 평균 1.750%. 같은 장비에서 측정 전 2.283%였고 `KERN_PROC_PID`의 PID별 `sysctl`을 `PROC_PIDTBSDINFO`로 교체한 뒤 합격했다.
 
 ## 배포 검증
 

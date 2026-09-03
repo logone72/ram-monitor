@@ -22,9 +22,24 @@ struct BasicProcessInfo {
   let path: String
 }
 
+private struct StableProcessInfo {
+  let name: String
+  let path: String
+  let architecture: String?
+}
+
+#if DEBUG
+  struct RetainedStateCounts {
+    let cpu: Int
+    let bundles: Int
+    let processes: Int
+  }
+#endif
+
 actor ProcessSampler {
   private var previousCPU: [ProcessSample.Identity: CPUTimeSnapshot] = [:]
   private var bundleCache: [String: BundleIdentity] = [:]
+  private var processInfoCache: [ProcessSample.Identity: StableProcessInfo] = [:]
 
   func sample() throws -> RawMonitorSample {
     try Task.checkCancellation()
@@ -37,9 +52,11 @@ actor ProcessSampler {
     let processesByPID = Dictionary(uniqueKeysWithValues: processPairs)
     var nextCPU: [ProcessSample.Identity: CPUTimeSnapshot] = [:]
     var nextBundleCache = bundleCache
+    var nextProcessInfoCache: [ProcessSample.Identity: StableProcessInfo] = [:]
     let processes: [ProcessSample] = try processesByPID.values.map { process in
       try Task.checkCancellation()
       let identity = ProcessSample.Identity(pid: process.pid, startTime: process.startTime)
+      let architecture = cachedArchitecture(for: identity, pid: process.pid)
       let task = taskInfo(pid: process.pid)
       let currentCPU = task.map {
         CPUTimeSnapshot(user: $0.pti_total_user, system: $0.pti_total_system, timestamp: timestamp)
@@ -47,6 +64,11 @@ actor ProcessSampler {
       if let currentCPU {
         nextCPU[identity] = currentCPU
       }
+      nextProcessInfoCache[identity] = StableProcessInfo(
+        name: process.name,
+        path: process.path,
+        architecture: architecture
+      )
       return ProcessSample(
         id: identity,
         parentID: process.parentID,
@@ -63,7 +85,7 @@ actor ProcessSampler {
           currentCPU.flatMap { Self.cpuPercent(previous: previous, current: $0) }
         },
         threadCount: task.map { Int32($0.pti_threadnum) },
-        architecture: architecture(pid: process.pid)
+        architecture: architecture
       )
     }
     let systemMemory = try systemMemory()
@@ -71,6 +93,7 @@ actor ProcessSampler {
     nextBundleCache = nextBundleCache.filter { currentPaths.contains($0.key) }
     previousCPU = nextCPU
     bundleCache = nextBundleCache
+    processInfoCache = nextProcessInfoCache
     return RawMonitorSample(
       processes: processes,
       systemMemory: systemMemory,
@@ -127,21 +150,23 @@ actor ProcessSampler {
   }
 
   private func basicProcessInfo(pid: pid_t) -> BasicProcessInfo? {
-    guard let path = processPath(pid: pid) else { return nil }
-    var info = kinfo_proc()
-    var size = MemoryLayout<kinfo_proc>.size
-    var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
-    let result = mib.withUnsafeMutableBufferPointer { pointer in
-      sysctl(pointer.baseAddress, 4, &info, &size, nil, 0)
+    var info = proc_bsdinfo()
+    let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+    let result = withUnsafeMutablePointer(to: &info) {
+      proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, $0, size)
     }
-    guard result == 0, size == MemoryLayout<kinfo_proc>.size else { return nil }
-    let seconds = info.kp_proc.p_starttime.tv_sec
-    let microseconds = info.kp_proc.p_starttime.tv_usec
+    guard result == size else { return nil }
+    let seconds = info.pbi_start_tvsec
+    let microseconds = info.pbi_start_tvusec
+    let startTime = TimeInterval(seconds) + TimeInterval(microseconds) / 1_000_000
+    let identity = ProcessSample.Identity(pid: pid, startTime: startTime)
+    let stable = processInfoCache[identity]
+    guard let path = stable?.path ?? processPath(pid: pid) else { return nil }
     return BasicProcessInfo(
       pid: pid,
-      parentID: info.kp_eproc.e_ppid,
-      startTime: TimeInterval(seconds) + TimeInterval(microseconds) / 1_000_000,
-      name: URL(fileURLWithPath: path).lastPathComponent,
+      parentID: pid_t(info.pbi_ppid),
+      startTime: startTime,
+      name: stable?.name ?? (path as NSString).lastPathComponent,
       path: path
     )
   }
@@ -190,6 +215,11 @@ actor ProcessSampler {
     case CPU_TYPE_X86_64: return "Intel"
     default: return nil
     }
+  }
+
+  private func cachedArchitecture(for identity: ProcessSample.Identity, pid: pid_t) -> String? {
+    if let stable = processInfoCache[identity] { return stable.architecture }
+    return architecture(pid: pid)
   }
 
   private func systemMemory() throws -> SystemMemorySample {
@@ -253,20 +283,20 @@ actor ProcessSampler {
       appPath = outermostAppPath(in: parent.path)
       parentID = parent.parentID
     }
-    guard let appPath, let bundle = Bundle(url: URL(fileURLWithPath: appPath)),
+    guard let appPath, let bundle = Bundle(path: appPath),
       let id = bundle.bundleIdentifier
     else { return nil }
     let displayName =
       bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
       ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
-      ?? URL(fileURLWithPath: appPath).deletingPathExtension().lastPathComponent
+      ?? ((appPath as NSString).lastPathComponent as NSString).deletingPathExtension
     let identity = BundleIdentity(id: id, displayName: displayName, path: appPath)
     cache[process.path] = identity
     return identity
   }
 
   private static func outermostAppPath(in path: String) -> String? {
-    let components = URL(fileURLWithPath: path).pathComponents
+    let components = (path as NSString).pathComponents
     guard let index = components.firstIndex(where: { $0.lowercased().hasSuffix(".app") }) else {
       return nil
     }
@@ -274,8 +304,12 @@ actor ProcessSampler {
   }
 
   #if DEBUG
-    func retainedStateCounts() -> (cpu: Int, bundles: Int) {
-      (previousCPU.count, bundleCache.count)
+    func retainedStateCounts() -> RetainedStateCounts {
+      RetainedStateCounts(
+        cpu: previousCPU.count,
+        bundles: bundleCache.count,
+        processes: processInfoCache.count
+      )
     }
   #endif
 }

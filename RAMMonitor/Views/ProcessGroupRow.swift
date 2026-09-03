@@ -2,6 +2,12 @@ import AppKit
 import SwiftUI
 
 struct ProcessGroupRow: View {
+  @MainActor private static let iconCache: NSCache<NSString, NSImage> = {
+    let cache = NSCache<NSString, NSImage>()
+    cache.countLimit = 256
+    return cache
+  }()
+
   let group: ProcessGroup
   let metric: MemoryMetric
   let settings: MonitorSettings
@@ -57,8 +63,8 @@ struct ProcessGroupRow: View {
   }
 
   @ViewBuilder private var groupIcon: some View {
-    if let path = group.bundlePath {
-      Image(nsImage: NSWorkspace.shared.icon(forFile: path))
+    if let image = groupIconImage {
+      Image(nsImage: image)
         .resizable()
         .scaledToFit()
         .frame(width: 20, height: 20)
@@ -69,6 +75,15 @@ struct ProcessGroupRow: View {
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
     }
+  }
+
+  private var groupIconImage: NSImage? {
+    guard let path = group.bundlePath else { return nil }
+    let key = path as NSString
+    if let image = Self.iconCache.object(forKey: key) { return image }
+    let image = NSWorkspace.shared.icon(forFile: path)
+    Self.iconCache.setObject(image, forKey: key)
+    return image
   }
 
   private func row(_ values: Values, isChild: Bool) -> some View {

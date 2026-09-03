@@ -36,14 +36,15 @@ struct MonitorView: View {
   }
 
   private var workUnitList: some View {
-    VStack(spacing: 0) {
+    let visibleGroups = model.visibleGroups
+    return VStack(spacing: 0) {
       columnHeaders
       Divider()
 
       if model.snapshot == nil {
         ContentUnavailableView("Loading processes", systemImage: "memorychip")
           .frame(maxWidth: .infinity, maxHeight: .infinity)
-      } else if model.visibleGroups.isEmpty {
+      } else if visibleGroups.isEmpty {
         ContentUnavailableView("No matching work units", systemImage: "magnifyingglass")
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .accessibilityLabel("No matching work units")
@@ -51,7 +52,7 @@ struct MonitorView: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 0) {
-            ForEach(model.visibleGroups) { group in
+            ForEach(visibleGroups) { group in
               ProcessGroupRow(
                 group: group,
                 metric: model.settings.memoryMetric,

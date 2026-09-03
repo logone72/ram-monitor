@@ -12,7 +12,7 @@ V1은 `Darwin`과 `Foundation`만 사용한다. 별도 C bridging header, 외부
 |---|---|---|---|
 | PID 목록 | `proc_listallpids` | 반환 개수 `> 0`, 버퍼보다 작음 | snapshot 전체 실패 |
 | 실행 경로 | `proc_pidpath` | 반환 길이 `> 0` | 해당 PID 제외 |
-| PPID·시작 시각 | `sysctl` + `KERN_PROC_PID` | 반환값 `0`, 구조체 크기 일치 | 해당 PID 제외 |
+| PPID·시작 시각 | `proc_pidinfo` + `PROC_PIDTBSDINFO` | 반환 바이트가 구조체 크기와 같음 | 해당 PID 제외 |
 | Resident·CPU·thread | `proc_pidinfo` + `PROC_PIDTASKINFO` | 반환 바이트가 구조체 크기와 같음 | 각 값 `nil` |
 | Physical Footprint | `proc_pid_rusage` + `RUSAGE_INFO_V4` | 반환값 `0` | 값 `nil` |
 | Architecture | `proc_pidinfo` + `PROC_PIDARCHINFO` | 반환 바이트가 구조체 크기와 같음 | 값 `nil` |
@@ -29,12 +29,13 @@ V1은 `Darwin`과 `Foundation`만 사용한다. 별도 C bridging header, 외부
 ```swift
 proc_taskinfo
 proc_archinfo
+proc_bsdinfo
 rusage_info_v4
-kinfo_proc
 vm_statistics64_data_t
 
 PROC_PIDTASKINFO
 PROC_PIDARCHINFO
+PROC_PIDTBSDINFO
 RUSAGE_INFO_V4
 HOST_VM_INFO64
 CPU_TYPE_ARM64
@@ -55,9 +56,9 @@ let hostVMInfoCount = mach_msg_type_number_t(
 - `PROC_PIDPATHINFO_MAXSIZE`를 숫자 `4096`으로 다시 선언하지 않는다.
 - `HOST_VM_INFO64_COUNT`를 숫자로 고정하지 않는다.
 - `PROC_PIDARCHINFO_FLAVOR` 같은 별도 상수를 만들지 않고 SDK의 `PROC_PIDARCHINFO`를 쓴다.
-- `proc_taskinfo`와 `proc_archinfo`를 Swift 구조체로 복제하지 않는다. 현재 SDK가 두 구조체를 직접 import한다.
+- `proc_taskinfo`, `proc_archinfo`, `proc_bsdinfo`를 Swift 구조체로 복제하지 않는다. 현재 SDK가 세 구조체를 직접 import한다.
 
-문서 작성 시 사용한 Xcode SDK의 arm64 import 결과는 `proc_taskinfo` 96바이트, `proc_archinfo` 8바이트, `rusage_info_v4` 296바이트였다. 이 숫자는 진단 참고값일 뿐 구현 상수로 쓰지 않는다.
+문서 작성 시 사용한 Xcode SDK의 arm64 import 결과는 `proc_taskinfo` 96바이트, `proc_archinfo` 8바이트, `proc_bsdinfo` 136바이트, `rusage_info_v4` 296바이트였다. 이 숫자는 진단 참고값일 뿐 구현 상수로 쓰지 않는다.
 
 ## 공개 표면과 내부 상태
 
@@ -74,15 +75,17 @@ enum SamplingError: Error, Sendable {
 }
 ```
 
-actor가 소유하는 가변 상태는 두 개뿐이다.
+actor가 소유하는 가변 상태는 세 개다.
 
 ```swift
 private var previousCPU: [ProcessSample.Identity: CPUTimeSnapshot] = [:]
 private var bundleCache: [String: BundleIdentity] = [:]
+private var processInfoCache: [ProcessSample.Identity: StableProcessInfo] = [:]
 ```
 
 - `previousCPU`: CPU delta 계산용이며 매 성공 주기마다 사라진 identity를 제거한다.
 - `bundleCache`: 성공한 Bundle 해석만 실행 경로로 캐시한다. 실패를 캐시하기 위한 별도 enum은 만들지 않는다.
+- `processInfoCache`: 같은 `(pid, startTime)`의 경로·이름·architecture를 재사용하며 매 성공 주기에 사라진 identity를 제거한다.
 - 수집 결과만 `Sendable` 값 타입으로 actor 밖에 보낸다. C 구조체와 unsafe pointer는 wrapper 밖으로 노출하지 않는다.
 
 ## 한 주기의 순서
@@ -94,7 +97,7 @@ private var bundleCache: [String: BundleIdentity] = [:]
 5. 완성된 기본 정보 사전으로 Bundle을 해석한다.
 6. 전체 물리 RAM과 VM 통계를 읽는다.
 7. 이번 주기에 남은 process identity로 다음 CPU 상태를 만든다.
-8. 전 단계가 성공하면 CPU 상태와 Bundle cache를 교체하고 `RawMonitorSample` 하나를 반환한다.
+8. 전 단계가 성공하면 CPU 상태와 두 cache를 교체하고 `RawMonitorSample` 하나를 반환한다.
 
 커널 상태는 호출 사이에도 바뀌므로 완전한 원자적 snapshot은 아니다. 다만 `sampledAt`, CPU timestamp, 프로세스 배열, 시스템 메모리는 같은 `RawMonitorSample`에만 묶는다. 중간 결과는 화면에 게시하지 않는다. 시스템 메모리 실패나 취소가 발생하면 actor의 CPU 기준 상태도 교체하지 않는다.
 
@@ -168,7 +171,7 @@ private func processPath(pid: pid_t) -> String? {
 - 반환 길이는 NUL 문자를 제외한 길이다.
 - 미리 0으로 채운 배열과 반환 길이를 함께 사용해 버퍼 밖을 읽지 않는다.
 - 경로가 없으면 이름과 Bundle도 신뢰할 수 없으므로 해당 PID를 제외한다.
-- 표시 이름의 1차 fallback은 `URL(fileURLWithPath: path).lastPathComponent`다.
+- 표시 이름의 1차 fallback은 `(path as NSString).lastPathComponent`다.
 
 ### PPID와 시작 시각
 
@@ -182,16 +185,16 @@ private struct BasicProcessInfo {
 }
 ```
 
-`sysctl` MIB는 `[CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]`다. `kinfo_proc`의 다음 필드만 읽는다.
+`PROC_PIDTBSDINFO`로 `proc_bsdinfo`를 읽고 다음 필드만 사용한다.
 
 ```swift
-let parentID = info.kp_eproc.e_ppid
-let seconds = info.kp_proc.p_starttime.tv_sec
-let microseconds = info.kp_proc.p_starttime.tv_usec
+let parentID = pid_t(info.pbi_ppid)
+let seconds = info.pbi_start_tvsec
+let microseconds = info.pbi_start_tvusec
 let startTime = TimeInterval(seconds) + TimeInterval(microseconds) / 1_000_000
 ```
 
-성공 조건은 `sysctl(...) == 0`이고 결과 크기가 `MemoryLayout<kinfo_proc>.size`와 같은 경우다. 실패한 PID에 `parentID = 0`, `startTime = 0` 같은 가짜 identity를 부여하지 않고 제외한다. UID와 사용자명은 제품에 표시하거나 그룹 키로 쓰지 않으므로 수집하지 않는다.
+성공 조건은 `proc_pidinfo` 반환 바이트가 `MemoryLayout<proc_bsdinfo>.size`와 같은 경우다. 실패한 PID에 `parentID = 0`, `startTime = 0` 같은 가짜 identity를 부여하지 않고 제외한다. UID와 사용자명은 제품에 표시하거나 그룹 키로 쓰지 않으므로 수집하지 않는다.
 
 ## 3. Resident Size, CPU 누적값, thread 수
 
@@ -355,12 +358,12 @@ Bundle 해석은 시스템 수집 뒤 같은 actor에서 수행하되 규칙 자
 2. 없으면 `[pid_t: BasicProcessInfo]`에서 부모를 최대 5번 따라가며 같은 검사를 한다.
 3. 이미 방문한 PID는 `Set<pid_t>`로 감지해 cycle을 중단한다.
 4. `.xpc` 안의 실행 파일도 상위 path component의 가장 바깥쪽 `.app`을 선택한다.
-5. 찾은 `.app`만 `Bundle(url:)`로 열고 Bundle ID와 표시 이름을 읽는다.
+5. 찾은 `.app`만 `Bundle(path:)`로 열고 Bundle ID와 표시 이름을 읽는다.
 6. 성공 결과만 원래 실행 경로를 key로 캐시한다.
 
 부모 탐색은 매 단계 전체 프로세스 배열을 검색하지 않고 PID 사전을 사용한다. 최대 5단계라는 상한이 있으므로 별도 graph 타입은 만들지 않는다.
 
-캐시는 매 성공 주기 후 현재 실행 경로 집합에 없는 key를 제거한다. Bundle ID가 없으면 Bundle로 취급하지 않고 경로 fallback을 사용한다.
+Bundle cache는 매 성공 주기 후 현재 실행 경로 집합에 없는 key를 제거한다. Process info cache는 현재 identity만 남긴다. Bundle ID가 없으면 Bundle로 취급하지 않고 경로 fallback을 사용한다.
 
 ## 9. 실패와 race 규칙
 
@@ -383,9 +386,9 @@ Bundle 해석은 시스템 수집 뒤 같은 actor에서 수행하되 규칙 자
 - `ProcessSampler` 호출은 한 번에 하나만 실행한다.
 - 한 PID의 서로 독립적인 libproc 호출을 `TaskGroup`으로 쪼개지 않는다. 수백 개의 작은 task와 actor hop이 이득보다 크다.
 - 한 주기에서 `mach_absolute_time()`은 CPU 기준점으로 한 번만 읽는다.
-- `Bundle(url:)`은 성공 cache가 없는 경로에만 사용한다.
+- `proc_pidpath`, `PROC_PIDARCHINFO`, `Bundle(path:)`은 같은 process identity의 성공 cache가 없을 때만 사용한다.
 - 메인 actor에서는 시스템 호출을 실행하지 않는다.
-- CPU 다음 상태와 Bundle cache 변경은 지역 변수에 모은 뒤 성공 시 한 번에 actor 상태에 반영한다.
+- CPU 다음 상태와 두 cache 변경은 지역 변수에 모은 뒤 성공 시 한 번에 actor 상태에 반영한다.
 - 취소는 PID 사이에서 `Task.isCancelled`를 확인하고 `CancellationError`를 던진다. 포인터 호출 도중의 강제 취소는 시도하지 않으며, 취소는 사용자 오류로 표시하지 않는다.
 
 ## 11. 구현 게이트
@@ -401,9 +404,11 @@ import Darwin
 print(
   MemoryLayout<proc_taskinfo>.size,
   MemoryLayout<proc_archinfo>.size,
+  MemoryLayout<proc_bsdinfo>.size,
   MemoryLayout<rusage_info_v4>.size,
   PROC_PIDTASKINFO,
   PROC_PIDARCHINFO,
+  PROC_PIDTBSDINFO,
   MAXPATHLEN
 )
 '
@@ -421,14 +426,14 @@ Expected: compile 성공, 모든 크기와 상수가 0보다 큼. 시스템의 `
 6. CPU counter 또는 timestamp가 역전되면 `nil`이다.
 7. 두 번째 실제 샘플의 현재 프로세스 CPU가 유한하고 음수가 아니다.
 8. architecture가 있으면 `Apple` 또는 `Intel` 중 하나다.
-9. sampler가 세 번 연속 실행되어도 stale `previousCPU` key가 계속 늘지 않는다.
+9. sampler가 세 번 연속 실행되어도 stale CPU·Bundle·process info cache가 계속 늘지 않는다.
 10. 시스템 메모리를 반복 수집해도 host port send-right reference가 누적되지 않는다.
 
 통합 테스트는 실행 중인 다른 앱의 특정 PID나 정확한 RAM 바이트를 고정하지 않는다. 커널 상태와 보호 정책은 실행마다 달라진다.
 
 ## 근거
 
-- 설치된 SDK: `usr/include/libproc.h`, `usr/include/sys/proc_info.h`, `usr/include/sys/resource.h`, `usr/include/sys/sysctl.h`, `usr/include/sys/proc.h`, `usr/include/mach/host_info.h`, `usr/include/mach/vm_statistics.h`
+- 설치된 SDK: `usr/include/libproc.h`, `usr/include/sys/proc_info.h`, `usr/include/sys/resource.h`, `usr/include/mach/host_info.h`, `usr/include/mach/vm_statistics.h`
 - [Apple XNU `proc_info.h`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/proc_info.h)
 - [Apple XNU process observability](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/recount.md)
 - [Apple `rusage_info_v4`](https://developer.apple.com/documentation/kernel/rusage_info_v4)

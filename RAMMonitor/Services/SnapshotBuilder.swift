@@ -33,7 +33,7 @@ enum SnapshotBuilder {
         return ProcessGroup(
           id: id,
           displayName: bundle?.displayName
-            ?? processes.first.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? id,
+            ?? processes.first.map { ($0.path as NSString).lastPathComponent } ?? id,
           bundlePath: bundle?.path,
           processes: sortedProcesses,
           totalPhysicalFootprintBytes: sum(processes.compactMap(\.physicalFootprintBytes)),

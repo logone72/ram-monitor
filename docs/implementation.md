@@ -690,7 +690,7 @@ Expected: `ProcessSampler`를 찾지 못해 compile failure.
 - 반환 개수가 버퍼와 같으면 최대 3회까지 두 배로 재시도한다.
 - buffer size는 `pid_t` 개수가 아니라 checked byte count로 전달한다.
 - 경로 버퍼는 `Int(MAXPATHLEN) * 4`로 계산한다.
-- `sysctl([CTL_KERN, KERN_PROC, KERN_PROC_PID, pid])`가 성공한 경우에만 PPID와 시작 시각을 채운다.
+- `proc_pidinfo(..., PROC_PIDTBSDINFO, ...)`가 구조체 크기를 반환한 경우에만 PPID와 시작 시각을 채운다.
 - 경로 또는 identity가 없으면 PID를 제외한다. UID와 사용자명은 수집하지 않는다.
 
 모든 기본 정보를 먼저 `[pid_t: BasicProcessInfo]`로 만든다. 그래야 부모 체인을 PID당 최대 5회의 dictionary lookup으로 해석할 수 있다.
@@ -702,7 +702,7 @@ Expected: `ProcessSampler`를 찾지 못해 compile failure.
 ```text
 proc_listallpids
 proc_pidpath
-sysctl(CTL_KERN, KERN_PROC, KERN_PROC_PID)
+proc_pidinfo(PROC_PIDTBSDINFO)
 proc_pidinfo(PROC_PIDTASKINFO)
 proc_pidinfo(PROC_PIDARCHINFO)
 proc_pid_rusage(RUSAGE_INFO_V4)

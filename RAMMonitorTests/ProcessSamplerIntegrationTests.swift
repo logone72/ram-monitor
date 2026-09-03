@@ -151,6 +151,7 @@ struct ProcessSamplerIntegrationTests {
     #expect(after <= before + 1)
     #expect(retained.cpu <= last.processes.count)
     #expect(retained.bundles <= Set(last.processes.map(\.path)).count)
+    #expect(retained.processes <= last.processes.count)
   }
 }
 
