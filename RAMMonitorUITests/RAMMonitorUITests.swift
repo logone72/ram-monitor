@@ -8,4 +8,20 @@ final class RAMMonitorUITests: XCTestCase {
 
     XCTAssertTrue(app.windows["RAM Monitor"].waitForExistence(timeout: 3))
   }
+
+  @MainActor
+  func testMainWindowHasChartListAndSearch() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    XCTAssertTrue(
+      app.descendants(matching: .any)["memory-pie-chart"].waitForExistence(timeout: 3),
+      "Memory pie chart is missing"
+    )
+    XCTAssertTrue(
+      app.descendants(matching: .any)["work-unit-list"].waitForExistence(timeout: 5),
+      "Work unit list is missing"
+    )
+    XCTAssertTrue(app.searchFields["Search work units"].exists, "Search field is missing")
+  }
 }

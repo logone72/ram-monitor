@@ -973,7 +973,7 @@ git commit -m "feat: add monitor refresh state"
 - Produces: `MonitorView(model:)`, `MemoryPieChart(chart:)`, `ProcessGroupRow(...)`
 - Consumes: `MonitorModel.snapshot`, `visibleGroups`, `expandedGroupIDs`, `searchText`, `sortOrder`
 
-- [ ] **Step 1: UI smoke test 작성**
+- [x] **Step 1: UI smoke test 작성**
 
 ```swift
 func testMainWindowHasChartListAndSearch() throws {
@@ -986,7 +986,7 @@ func testMainWindowHasChartListAndSearch() throws {
 }
 ```
 
-- [ ] **Step 2: UI test 실패 확인**
+- [x] **Step 2: UI test 실패 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -996,11 +996,11 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: accessibility identifier를 찾지 못해 test failure.
 
-- [ ] **Step 3: 36/64 메인 레이아웃 구현**
+- [x] **Step 3: 36/64 메인 레이아웃 구현**
 
 `GeometryReader` 안의 `HStack`으로 왼쪽 폭을 전체의 36%, 최소 300pt로 계산한다. `MemoryPieChart`의 chart frame은 `230 × 230pt`로 둔다. 오른쪽에는 하나의 통합 그룹 목록을 표시한다.
 
-- [ ] **Step 4: `SectorMark`와 범례 구현**
+- [x] **Step 4: `SectorMark`와 범례 구현**
 
 ```swift
 Chart(chart.slices) { slice in
@@ -1016,15 +1016,15 @@ Chart(chart.slices) { slice in
 
 중앙 분모, top 8 범례, Other, 모드별 시스템 조각, hover 정보를 [`interface.md`](interface.md)대로 표시한다.
 
-- [ ] **Step 5: 그룹과 subprocess 행 구현**
+- [x] **Step 5: 그룹과 subprocess 행 구현**
 
 CPU와 RAM을 항상 표시한다. Threads, PID, Processes, Architecture는 설정에 따라 표시한다.
 
-- [ ] **Step 6: 검색·열 정렬·키보드 동작 연결**
+- [x] **Step 6: 검색·열 정렬·키보드 동작 연결**
 
 `⌘F`, 열 머리글 정렬, 위·아래 선택, 왼쪽·오른쪽 접기·펼치기를 연결하고 필수 접근성 identifier와 label을 부여한다.
 
-- [ ] **Step 7: UI test와 unit test 통과 확인**
+- [x] **Step 7: UI test와 unit test 통과 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -1033,7 +1033,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: `TEST SUCCEEDED`.
 
-- [ ] **Step 8: 전체 검증 후 명시적으로 승인된 경우 commit**
+- [x] **Step 8: 전체 검증 후 명시적으로 승인된 경우 commit**
 
 ```bash
 make verify
