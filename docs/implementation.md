@@ -776,7 +776,7 @@ git commit -m "feat: sample process RAM and CPU"
 - Produces: `ProcessGroup` 집계, `MonitorSnapshot.groups`, `MonitorSnapshot.filtered(searchText:sortOrder:ascending:)`
 - Consumes: Task 3에서 부여한 `ProcessSample.bundle`
 
-- [ ] **Step 1: 그룹 키와 fallback 테스트 작성**
+- [x] **Step 1: 그룹 키와 fallback 테스트 작성**
 
 ```swift
 extension SnapshotBuilderTests {
@@ -796,11 +796,11 @@ extension SnapshotBuilderTests {
 }
 ```
 
-- [ ] **Step 2: 이름이 같고 Bundle ID가 다른 그룹을 합치지 않는 테스트 작성**
+- [x] **Step 2: 이름이 같고 Bundle ID가 다른 그룹을 합치지 않는 테스트 작성**
 
 두 sample의 `displayName`은 `Browser`로 같게, Bundle ID는 `com.a.browser`, `com.b.browser`로 만들고 결과 그룹이 2개인지 검사한다.
 
-- [ ] **Step 3: 검색·정렬 테스트 작성**
+- [x] **Step 3: 검색·정렬 테스트 작성**
 
 그룹명 검색, 자식 이름 검색, RAM 내림차순, CPU 내림차순, locale-aware 이름 오름차순, process count 정렬을 각각 합성 snapshot으로 검사한다.
 
@@ -814,7 +814,7 @@ extension MonitorSnapshot {
 }
 ```
 
-- [ ] **Step 4: 테스트 실패 확인**
+- [x] **Step 4: 테스트 실패 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -824,7 +824,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: 새 그룹핑 또는 필터 함수에 대한 test failure.
 
-- [ ] **Step 5: 현재 그룹 기준 그대로 구현**
+- [x] **Step 5: 현재 그룹 기준 그대로 구현**
 
 ```swift
 let groupID = process.bundle?.id ?? process.path
@@ -834,7 +834,7 @@ let displayName = process.bundle?.displayName
 
 이름을 그룹 키에 추가하지 않는다. 모든 그룹을 하나의 배열로 반환한다.
 
-- [ ] **Step 6: 테스트와 전체 검증 후 명시적으로 승인된 경우 commit**
+- [x] **Step 6: 테스트와 전체 검증 후 명시적으로 승인된 경우 commit**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \

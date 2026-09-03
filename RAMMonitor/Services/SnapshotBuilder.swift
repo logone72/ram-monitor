@@ -23,11 +23,19 @@ enum SnapshotBuilder {
     Dictionary(grouping: processes) { $0.bundle?.id ?? $0.path }
       .map { id, processes in
         let bundle = processes.compactMap(\.bundle).first
+        let sortedProcesses = processes.sorted { lhs, rhs in
+          optionalOrder(
+            lhs.memoryBytes(for: metric),
+            rhs.memoryBytes(for: metric),
+            ascending: false
+          ) ?? (lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending)
+        }
         return ProcessGroup(
           id: id,
-          displayName: bundle?.displayName ?? processes.first?.name ?? id,
+          displayName: bundle?.displayName
+            ?? processes.first.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? id,
           bundlePath: bundle?.path,
-          processes: processes,
+          processes: sortedProcesses,
           totalPhysicalFootprintBytes: sum(processes.compactMap(\.physicalFootprintBytes)),
           totalResidentSizeBytes: sum(processes.compactMap(\.residentSizeBytes)),
           totalCPUPercent: sum(processes.compactMap(\.cpuPercent)),
@@ -35,7 +43,11 @@ enum SnapshotBuilder {
         )
       }
       .sorted { lhs, rhs in
-        compareMemory(lhs.memoryBytes(for: metric), rhs.memoryBytes(for: metric))
+        optionalOrder(
+          lhs.memoryBytes(for: metric),
+          rhs.memoryBytes(for: metric),
+          ascending: false
+        ) ?? (lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending)
       }
   }
 
@@ -132,14 +144,6 @@ enum SnapshotBuilder {
     }
   }
 
-  private static func compareMemory(_ lhs: UInt64?, _ rhs: UInt64?) -> Bool {
-    switch (lhs, rhs) {
-    case (let lhs?, let rhs?): lhs == rhs ? false : lhs > rhs
-    case (.some, nil): true
-    default: false
-    }
-  }
-
   private static func sum(_ values: [UInt64]) -> UInt64? {
     guard !values.isEmpty else { return nil }
     var total: UInt64 = 0
@@ -172,5 +176,60 @@ enum SnapshotBuilder {
     values.reduce(0) { total, value in
       total >= cap || value >= cap - total ? cap : total + value
     }
+  }
+}
+
+extension MonitorSnapshot {
+  func filtered(
+    searchText: String,
+    sortOrder: SortOrder,
+    ascending: Bool
+  ) -> [ProcessGroup] {
+    let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let matches =
+      query.isEmpty
+      ? groups
+      : groups.filter {
+        $0.displayName.localizedCaseInsensitiveContains(query)
+          || $0.processes.contains { $0.name.localizedCaseInsensitiveContains(query) }
+      }
+    return matches.sorted { lhs, rhs in
+      let result: Bool?
+      switch sortOrder {
+      case .memory:
+        result = optionalOrder(
+          lhs.memoryBytes(for: metric),
+          rhs.memoryBytes(for: metric),
+          ascending: ascending
+        )
+      case .cpu:
+        result = optionalOrder(lhs.totalCPUPercent, rhs.totalCPUPercent, ascending: ascending)
+      case .name:
+        let comparison = lhs.displayName.localizedStandardCompare(rhs.displayName)
+        result =
+          comparison == .orderedSame
+          ? nil
+          : ascending ? comparison == .orderedAscending : comparison == .orderedDescending
+      case .processCount:
+        result = optionalOrder(lhs.processes.count, rhs.processes.count, ascending: ascending)
+      }
+      return result
+        ?? (lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending)
+    }
+  }
+}
+
+private func optionalOrder<Value: Comparable>(
+  _ lhs: Value?,
+  _ rhs: Value?,
+  ascending: Bool
+) -> Bool? {
+  switch (lhs, rhs) {
+  case (nil, nil): return nil
+  case (nil, .some): return false
+  case (.some, nil): return true
+  case (let lhs?, let rhs?):
+    guard lhs != rhs else { return nil }
+    return ascending ? lhs < rhs : lhs > rhs
   }
 }
