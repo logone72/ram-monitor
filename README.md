@@ -1,5 +1,7 @@
 # RAM Monitor
 
+[English](README.md) | [한국어](README.ko.md)
+
 RAM Monitor is a native macOS utility that groups related subprocesses into one work unit so you can see what is actually using your memory. It keeps RAM at the center while retaining live CPU usage, search, sorting, configurable columns, and subprocess inspection.
 
 ![RAM Monitor dashboard](docs/screenshot.png)
