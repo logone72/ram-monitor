@@ -54,7 +54,7 @@
 - Produces: 빌드 가능한 앱과 test target, 공통 개발 명령, 로컬 Git 검사, CI `verify` job
 - Consumes: 없음
 
-- [ ] **Step 1: Xcode에서 새 macOS App 프로젝트 생성**
+- [x] **Step 1: Xcode에서 새 macOS App 프로젝트 생성**
 
 이 저장소 루트에 다음 값으로 만든다.
 
@@ -69,7 +69,7 @@ Testing System: Swift Testing with UI Tests
 
 `RAMMonitor` scheme은 shared로 저장해 로컬과 CI가 같은 scheme을 사용하게 한다.
 
-- [ ] **Step 2: target 설정 고정**
+- [x] **Step 2: target 설정 고정**
 
 앱과 테스트 target의 deployment target을 macOS 14.0으로 맞추고 앱 target에 아래 값을 설정한다.
 
@@ -89,7 +89,7 @@ ARCHS = arm64 x86_64
 ONLY_ACTIVE_ARCH[Release] = NO
 ```
 
-- [ ] **Step 3: 최소 앱 shell 작성**
+- [x] **Step 3: 최소 앱 shell 작성**
 
 ```swift
 import SwiftUI
@@ -109,7 +109,7 @@ struct RAMMonitorApp: App {
 }
 ```
 
-- [ ] **Step 4: 저장소 규칙과 도구 설정 작성**
+- [x] **Step 4: 저장소 규칙과 도구 설정 작성**
 
 `AGENTS.md`는 다음 내용으로 시작하고 100줄 이내로 유지한다.
 
@@ -208,7 +208,7 @@ file_length:
 brew "swiftlint"
 ```
 
-- [ ] **Step 5: 공통 명령 표면 작성**
+- [x] **Step 5: 공통 명령 표면 작성**
 
 `Makefile`:
 
@@ -262,7 +262,7 @@ check: format-check lint
 verify: doctor check build test analyze
 ```
 
-- [ ] **Step 6: 로컬 Git 검사 작성**
+- [x] **Step 6: 로컬 Git 검사 작성**
 
 `.githooks/pre-commit`:
 
@@ -293,7 +293,7 @@ fi
 
 두 hook은 검사만 실행하고 파일이나 staging 상태를 변경하지 않는다.
 
-- [ ] **Step 7: CI 작성**
+- [x] **Step 7: CI 작성**
 
 `.github/workflows/ci.yml`:
 
@@ -324,7 +324,7 @@ jobs:
       - run: make verify
 ```
 
-- [ ] **Step 8: 하네스 자체 검사**
+- [x] **Step 8: 하네스 자체 검사**
 
 ```bash
 make bootstrap
@@ -342,7 +342,7 @@ if .githooks/commit-msg "$invalid_message"; then exit 1; fi
 
 Expected: 환경과 `make check`가 성공하고, 올바른 commit 제목은 통과하며 잘못된 제목은 실패한다.
 
-- [ ] **Step 9: 빌드와 빈 테스트 target 확인**
+- [x] **Step 9: 빌드와 빈 테스트 target 확인**
 
 ```bash
 make verify
@@ -350,7 +350,7 @@ make verify
 
 Expected: `BUILD SUCCEEDED`와 `TEST SUCCEEDED`.
 
-- [ ] **Step 10: 명시적으로 승인된 경우 첫 commit 생성**
+- [x] **Step 10: 명시적으로 승인된 경우 첫 commit 생성**
 
 ```bash
 git add AGENTS.md CLAUDE.md .gitignore .swift-format .swiftlint.yml Brewfile Makefile .githooks .github/workflows/ci.yml docs RAMMonitor.xcodeproj RAMMonitor RAMMonitorTests RAMMonitorUITests LICENSE

@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+subject=$(sed -n '1p' "$1")
+
+case "$subject" in
+  Merge\ *|Revert\ *) exit 0 ;;
+esac
+
+if ! printf '%s\n' "$subject" | grep -Eq '^(feat|fix|refactor|chore|test|docs|build|ci)(\([a-z0-9._/-]+\))?!?: .+'; then
+  printf '%s\n' 'Commit subject must follow Conventional Commits.' >&2
+  exit 1
+fi

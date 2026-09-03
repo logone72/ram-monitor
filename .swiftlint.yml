@@ -1,0 +1,26 @@
+included:
+  - RAMMonitor
+  - RAMMonitorTests
+  - RAMMonitorUITests
+
+excluded:
+  - .build
+
+disabled_rules:
+  - line_length
+  - trailing_comma
+
+opt_in_rules:
+  - force_unwrapping
+
+function_body_length:
+  warning: 60
+  error: 120
+
+type_body_length:
+  warning: 350
+  error: 700
+
+file_length:
+  warning: 600
+  error: 1000
