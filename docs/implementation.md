@@ -859,7 +859,7 @@ git commit -m "feat: group and sort work units"
 - Produces: `MonitorModel.start()`, `stop()`, `refresh()`, `visibleGroups`, `settings`
 - Consumes: `ProcessSampler.sample()`, `SnapshotBuilder.build(...)`
 
-- [ ] **Step 1: 한 번의 refresh가 snapshot을 교체하는 테스트 작성**
+- [x] **Step 1: 한 번의 refresh가 snapshot을 교체하는 테스트 작성**
 
 ```swift
 @Suite("MonitorModel")
@@ -901,11 +901,11 @@ struct MonitorModelTests {
 }
 ```
 
-- [ ] **Step 2: 설정 기본값과 저장 왕복 테스트 작성**
+- [x] **Step 2: 설정 기본값과 저장 왕복 테스트 작성**
 
 격리된 `UserDefaults` suite에서 Physical Footprint, 2초, decimal, RAM 내림차순, Threads만 켜짐을 검사한다. 값을 바꾸고 새 `MonitorModel`을 만들어 같은 값이 복원되는지 검사한다.
 
-- [ ] **Step 3: 테스트 실패 확인**
+- [x] **Step 3: 테스트 실패 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -915,7 +915,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: `MonitorModel`을 찾지 못해 compile failure.
 
-- [ ] **Step 4: model 구현**
+- [x] **Step 4: model 구현**
 
 ```swift
 typealias SampleProvider = @Sendable () async throws -> RawMonitorSample
@@ -934,11 +934,11 @@ final class MonitorModel {
 
 기본 initializer는 하나의 `ProcessSampler` 인스턴스를 closure에 캡처한다. `start()`는 기존 task를 취소한 뒤 `refresh → sleep` 순서로 반복한다. 갱신 실패 시 마지막 snapshot을 유지한다.
 
-- [ ] **Step 5: metric 전환과 정렬 일관성 구현**
+- [x] **Step 5: metric 전환과 정렬 일관성 구현**
 
 마지막 `RawMonitorSample`을 보관하고 `memoryMetric`이 바뀌면 새 시스템 호출 없이 `SnapshotBuilder.build`를 다시 실행한다. 그 결과에 검색과 정렬을 적용해 목록과 차트를 한 번에 교체한다.
 
-- [ ] **Step 6: model 테스트 통과 확인**
+- [x] **Step 6: model 테스트 통과 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -948,7 +948,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: `TEST SUCCEEDED`.
 
-- [ ] **Step 7: 전체 검증 후 명시적으로 승인된 경우 commit**
+- [x] **Step 7: 전체 검증 후 명시적으로 승인된 경우 commit**
 
 ```bash
 make verify
