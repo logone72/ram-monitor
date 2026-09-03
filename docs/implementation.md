@@ -617,13 +617,13 @@ git commit -m "feat: add RAM snapshot accounting"
 - Produces: `actor ProcessSampler`, `func sample() throws -> RawMonitorSample`
 - Consumes: Task 2의 `ProcessSample`, `BundleIdentity`, `SystemMemorySample`, `RawMonitorSample`
 
-- [ ] **Step 1: 활성 Xcode SDK import 계약 확인**
+- [x] **Step 1: 활성 Xcode SDK import 계약 확인**
 
 [`system-api.md`](system-api.md)의 SDK import probe를 그대로 실행한다.
 
 Expected: `proc_taskinfo`, `proc_archinfo`, `rusage_info_v4`, `PROC_PIDTASKINFO`, `PROC_PIDARCHINFO`, `MAXPATHLEN`이 compile된다. `PROC_PIDPATHINFO_MAXSIZE`와 `HOST_VM_INFO64_COUNT`는 Swift에서 직접 쓰지 않는다.
 
-- [ ] **Step 2: 실제 현재 프로세스와 CPU 단위 테스트 작성**
+- [x] **Step 2: 실제 현재 프로세스와 CPU 단위 테스트 작성**
 
 ```swift
 import Testing
@@ -669,7 +669,7 @@ struct ProcessSamplerIntegrationTests {
 }
 ```
 
-- [ ] **Step 3: 테스트 실패 확인**
+- [x] **Step 3: 테스트 실패 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -679,7 +679,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: `ProcessSampler`를 찾지 못해 compile failure.
 
-- [ ] **Step 4: PID, 경로, identity 수집 구현**
+- [x] **Step 4: PID, 경로, identity 수집 구현**
 
 [`system-api.md`](system-api.md)의 1·2절을 구현한다.
 
@@ -692,7 +692,7 @@ Expected: `ProcessSampler`를 찾지 못해 compile failure.
 
 모든 기본 정보를 먼저 `[pid_t: BasicProcessInfo]`로 만든다. 그래야 부모 체인을 PID당 최대 5회의 dictionary lookup으로 해석할 수 있다.
 
-- [ ] **Step 5: RAM, CPU, thread, architecture 수집 구현**
+- [x] **Step 5: RAM, CPU, thread, architecture 수집 구현**
 
 한 수집 주기에서 아래 API를 호출한다.
 
@@ -716,7 +716,7 @@ host_statistics64(HOST_VM_INFO64)
 
 각 unsafe pointer는 해당 private wrapper 안에서만 유효하게 둔다. 개별 metric 실패는 행을 없애지 않고 해당 값만 `nil`로 둔다.
 
-- [ ] **Step 6: CPU delta와 Bundle 해석 구현**
+- [x] **Step 6: CPU delta와 Bundle 해석 구현**
 
 이전 CPU 값은 `(pid, startTime)`으로 저장하고 수집이 끝날 때 사라진 identity를 제거한다. CPU 누적 delta와 `mach_absolute_time()` delta는 같은 raw Mach tick 단위로 나눠 100을 곱한다. wall delta에만 `mach_timebase_info`를 적용하지 않는다. 첫 샘플, overflow, counter 역전, clock 역전은 `nil`이다.
 
@@ -729,7 +729,7 @@ private func resolveBundle(
 ) -> BundleIdentity?
 ```
 
-- [ ] **Step 7: 시스템 메모리 구현**
+- [x] **Step 7: 시스템 메모리 구현**
 
 - 전체 물리 RAM은 `ProcessInfo.processInfo.physicalMemory`로 읽는다.
 - page size는 `host_page_size`로 읽는다.
@@ -740,7 +740,7 @@ private func resolveBundle(
 
 정확한 pointer rebound와 오류 표는 [`system-api.md`](system-api.md)를 그대로 따른다.
 
-- [ ] **Step 8: sampler 테스트 통과 확인**
+- [x] **Step 8: sampler 테스트 통과 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -750,11 +750,11 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 Expected: `TEST SUCCEEDED`.
 
-- [ ] **Step 9: 실제 값과 수동 비교**
+- [x] **Step 9: 실제 값과 수동 비교**
 
 2초 간격으로 세 번 측정한 뒤 현재 프로세스와 Chrome 계열 프로세스의 RAM 값이 비어 있지 않고 값의 증감 방향이 Activity Monitor와 일치하는지 확인한다. Apple Silicon에서는 한 코어를 지속 사용한 테스트 프로세스가 약 100% 방향인지 확인한다.
 
-- [ ] **Step 10: 전체 검증 후 명시적으로 승인된 경우 commit**
+- [x] **Step 10: 전체 검증 후 명시적으로 승인된 경우 commit**
 
 ```bash
 make verify
