@@ -14,7 +14,7 @@ struct CPUTimeSnapshot: Sendable {
   let timestamp: UInt64
 }
 
-private struct BasicProcessInfo {
+struct BasicProcessInfo {
   let pid: pid_t
   let parentID: pid_t
   let startTime: TimeInterval
@@ -27,16 +27,18 @@ actor ProcessSampler {
   private var bundleCache: [String: BundleIdentity] = [:]
 
   func sample() throws -> RawMonitorSample {
+    try Task.checkCancellation()
     let sampledAt = Date()
     let timestamp = mach_absolute_time()
-    let processesByPID = Dictionary(
-      uniqueKeysWithValues: try listAllPIDs().compactMap { pid in
-        basicProcessInfo(pid: pid).map { (pid, $0) }
-      }
-    )
+    let processPairs: [(pid_t, BasicProcessInfo)] = try Self.listAllPIDs().compactMap { pid in
+      try Task.checkCancellation()
+      return basicProcessInfo(pid: pid).map { (pid, $0) }
+    }
+    let processesByPID = Dictionary(uniqueKeysWithValues: processPairs)
     var nextCPU: [ProcessSample.Identity: CPUTimeSnapshot] = [:]
     var nextBundleCache = bundleCache
-    let processes = processesByPID.values.map { process in
+    let processes: [ProcessSample] = try processesByPID.values.map { process in
+      try Task.checkCancellation()
       let identity = ProcessSample.Identity(pid: process.pid, startTime: process.startTime)
       let task = taskInfo(pid: process.pid)
       let currentCPU = task.map {
@@ -90,8 +92,10 @@ actor ProcessSampler {
     return Double(currentCPU - previousCPU) / Double(current.timestamp - previous.timestamp) * 100
   }
 
-  private func listAllPIDs() throws -> [pid_t] {
-    let estimate = proc_listallpids(nil, 0)
+  nonisolated static func listAllPIDs(
+    using list: (UnsafeMutableRawPointer?, Int32) -> Int32 = proc_listallpids
+  ) throws -> [pid_t] {
+    let estimate = list(nil, 0)
     guard estimate > 0 else {
       throw SamplingError.processEnumerationFailed(errno: errno)
     }
@@ -106,7 +110,7 @@ actor ProcessSampler {
       }
       var buffer = [pid_t](repeating: 0, count: capacity)
       let count = buffer.withUnsafeMutableBufferPointer {
-        proc_listallpids($0.baseAddress, Int32(byteCount))
+        list($0.baseAddress, Int32(byteCount))
       }
       guard count > 0 else {
         throw SamplingError.processEnumerationFailed(errno: errno)
@@ -232,7 +236,7 @@ actor ProcessSampler {
     return result.overflow ? nil : result.partialValue
   }
 
-  private static func resolveBundle(
+  static func resolveBundle(
     for process: BasicProcessInfo,
     allProcesses: [pid_t: BasicProcessInfo],
     cache: inout [String: BundleIdentity]
@@ -268,4 +272,10 @@ actor ProcessSampler {
     }
     return NSString.path(withComponents: Array(components[...index]))
   }
+
+  #if DEBUG
+    func retainedStateCounts() -> (cpu: Int, bundles: Int) {
+      (previousCPU.count, bundleCache.count)
+    }
+  #endif
 }

@@ -37,4 +37,26 @@ final class RAMMonitorUITests: XCTestCase {
       "Settings view is missing"
     )
   }
+
+  @MainActor
+  func testGroupExpansionAndEmptySearchResult() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    let expand = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Expand '")).firstMatch
+    XCTAssertTrue(expand.waitForExistence(timeout: 5), "No expandable work unit is available")
+    let collapseLabel = "Collapse \(String(expand.label.dropFirst("Expand ".count)))"
+    expand.click()
+    XCTAssertTrue(
+      app.buttons[collapseLabel].waitForExistence(timeout: 2), "Work unit did not expand")
+
+    let search = app.searchFields["Search work units"]
+    XCTAssertTrue(search.exists, "Search field is missing")
+    search.click()
+    search.typeText("qz")
+    XCTAssertTrue(
+      app.descendants(matching: .any)["no-matching-work-units"].waitForExistence(timeout: 2),
+      "Empty search result is missing"
+    )
+  }
 }

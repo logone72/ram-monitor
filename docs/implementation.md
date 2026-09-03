@@ -1236,13 +1236,13 @@ git tag v0.1.0
 
 ## 완료 조건
 
-- [ ] [`product.md`](product.md)의 V1 범위가 모두 구현됨
-- [ ] Physical Footprint와 Resident Size 회계 테스트 통과
-- [ ] SDK import, PID buffer, RAM pointer, CPU Mach tick 계약 확인
-- [ ] 목록·차트·백분율·정렬의 metric 일관성 확인
-- [ ] 하나의 통합 그룹 목록과 subprocess 확장 동작 확인
-- [ ] macOS 14 deployment target과 Universal 2 binary 확인
-- [ ] `make check`와 `make verify` 통과
+- [x] [`product.md`](product.md)의 V1 범위가 모두 구현됨
+- [x] Physical Footprint와 Resident Size 회계 테스트 통과
+- [x] SDK import, PID buffer, RAM pointer, CPU Mach tick 계약 확인
+- [x] 목록·차트·백분율·정렬의 metric 일관성 확인
+- [x] 하나의 통합 그룹 목록과 subprocess 확장 동작 확인
+- [x] macOS 14 deployment target과 Universal 2 binary 확인
+- [x] `make check`와 `make verify` 통과
 - [ ] pull request와 `main` push에서 CI `verify` job 통과
 - [ ] GitHub DMG와 개인 Tap 설치 흐름 확인
-- [ ] 유료 Developer ID 없이 배포된다는 한계를 사용자 문서에 명시
+- [x] 유료 Developer ID 없이 배포된다는 한계를 사용자 문서에 명시

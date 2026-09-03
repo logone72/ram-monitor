@@ -57,9 +57,11 @@ struct MonitorModelTests {
     await model.refresh()
     let firstDate = try #require(model.snapshot?.sampledAt)
     await model.refresh()
+    await model.refresh()
 
     #expect(model.snapshot?.sampledAt == firstDate)
     #expect(model.lastRefreshError == "Unable to refresh processes")
+    #expect(model.isShowingStaleData)
   }
 
   @Test @MainActor func failedLoginItemChangeKeepsStoredValue() throws {

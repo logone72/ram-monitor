@@ -44,9 +44,10 @@ struct MonitorView: View {
         ContentUnavailableView("Loading processes", systemImage: "memorychip")
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       } else if model.visibleGroups.isEmpty {
-        ContentUnavailableView.search(text: model.searchText)
+        ContentUnavailableView("No matching work units", systemImage: "magnifyingglass")
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .accessibilityLabel("No matching work units")
+          .accessibilityIdentifier("no-matching-work-units")
       } else {
         ScrollView {
           LazyVStack(spacing: 0) {

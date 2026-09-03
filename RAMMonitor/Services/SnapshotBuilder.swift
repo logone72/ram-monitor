@@ -60,13 +60,15 @@ enum SnapshotBuilder {
     let measuredGroups = groups.compactMap { group -> (ProcessGroup, UInt64)? in
       group.memoryBytes(for: metric).map { (group, $0) }
     }
-    let processSlices = makeProcessSlices(from: measuredGroups, topSliceCount: topSliceCount)
 
     switch metric {
     case .residentSize:
+      guard let measured = sum(measuredGroups.map(\.1)) else {
+        return MemoryChart(denominatorBytes: 0, slices: [], wasNormalized: false)
+      }
       return MemoryChart(
-        denominatorBytes: sum(measuredGroups.map(\.1)) ?? 0,
-        slices: processSlices,
+        denominatorBytes: measured,
+        slices: makeProcessSlices(from: measuredGroups, topSliceCount: topSliceCount),
         wasNormalized: false
       )
     case .physicalFootprint:
@@ -76,7 +78,14 @@ enum SnapshotBuilder {
         at: total
       )
       let available = total - systemUsed
-      let measured = sum(measuredGroups.map(\.1)) ?? 0
+      guard let measured = sum(measuredGroups.map(\.1)) else {
+        return MemoryChart(
+          denominatorBytes: total,
+          slices: systemSlices(unattributed: systemUsed, available: available),
+          wasNormalized: true
+        )
+      }
+      let processSlices = makeProcessSlices(from: measuredGroups, topSliceCount: topSliceCount)
       let wasNormalized = measured > systemUsed
       let visibleProcessSlices =
         wasNormalized
@@ -85,27 +94,27 @@ enum SnapshotBuilder {
       let visibleMeasured = wasNormalized ? systemUsed : measured
       var slices = visibleProcessSlices
       let unattributed = systemUsed - min(systemUsed, visibleMeasured)
-      if unattributed > 0 {
-        slices.append(
-          ChartSlice(
-            id: "unattributed",
-            label: "System / Unattributed",
-            bytes: unattributed,
-            kind: .unattributed
-          )
-        )
-      }
-      if available > 0 {
-        slices.append(
-          ChartSlice(id: "available", label: "Available", bytes: available, kind: .available)
-        )
-      }
+      slices += systemSlices(unattributed: unattributed, available: available)
       return MemoryChart(
         denominatorBytes: total,
         slices: slices,
         wasNormalized: wasNormalized
       )
     }
+  }
+
+  private static func systemSlices(unattributed: UInt64, available: UInt64) -> [ChartSlice] {
+    [
+      unattributed > 0
+        ? ChartSlice(
+          id: "unattributed",
+          label: "System / Unattributed",
+          bytes: unattributed,
+          kind: .unattributed
+        ) : nil,
+      available > 0
+        ? ChartSlice(id: "available", label: "Available", bytes: available, kind: .available) : nil,
+    ].compactMap { $0 }
   }
 
   private static func makeProcessSlices(

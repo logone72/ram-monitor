@@ -23,6 +23,23 @@ struct SnapshotBuilderTests {
     #expect(result.chart.slices.contains { $0.kind == .available && $0.bytes == 4_000 })
   }
 
+  @Test func physicalChartNormalizesProcessSlicesWithoutChangingListValues() {
+    let raw = Fixtures.raw(
+      physicalRAM: 1_000,
+      systemUsed: 600,
+      processes: [
+        .sample(id: 1, group: "browser", footprint: 500),
+        .sample(id: 2, group: "editor", footprint: 400),
+      ]
+    )
+
+    let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
+
+    #expect(result.chart.wasNormalized)
+    #expect(result.groups.compactMap { $0.totalPhysicalFootprintBytes }.reduce(0, +) == 900)
+    #expect(checkedSum(result.chart.slices.map(\.bytes)) == 1_000)
+  }
+
   @Test func residentChartUsesMeasuredProcessTotal() {
     let raw = Fixtures.rawWithTenGroups(residentBytesPerGroup: 100)
     let result = SnapshotBuilder.build(raw: raw, metric: .residentSize, topSliceCount: 8)
@@ -32,6 +49,45 @@ struct SnapshotBuilderTests {
     #expect(result.chart.slices.first { $0.kind == .other }?.bytes == 200)
     #expect(!result.chart.slices.contains { $0.kind == .available })
     #expect(!result.chart.slices.contains { $0.kind == .unattributed })
+  }
+
+  @Test func groupAggregationSkipsMissingValuesAndRejectsOverflow() throws {
+    let result = SnapshotBuilder.build(
+      raw: Fixtures.raw(processes: [
+        .sample(id: 1, group: "partial", footprint: nil),
+        .sample(id: 2, group: "partial", footprint: 7),
+        .sample(id: 3, group: "missing", footprint: nil),
+        .sample(id: 4, group: "missing", footprint: nil),
+        .sample(id: 5, group: "overflow", footprint: .max),
+        .sample(id: 6, group: "overflow", footprint: 1),
+      ]),
+      metric: .physicalFootprint
+    )
+
+    #expect(
+      try #require(result.groups.first { $0.id == "partial" }).totalPhysicalFootprintBytes == 7)
+    #expect(
+      try #require(result.groups.first { $0.id == "missing" }).totalPhysicalFootprintBytes == nil)
+    #expect(
+      try #require(result.groups.first { $0.id == "overflow" }).totalPhysicalFootprintBytes == nil)
+  }
+
+  @Test func chartAggregationOverflowCannotBreakItsDenominator() {
+    let raw = Fixtures.raw(
+      physicalRAM: 100,
+      systemUsed: 80,
+      processes: [
+        .sample(id: 1, group: "a", footprint: .max, resident: .max),
+        .sample(id: 2, group: "b", footprint: .max, resident: .max),
+      ]
+    )
+
+    let physical = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
+    let resident = SnapshotBuilder.build(raw: raw, metric: .residentSize)
+
+    #expect(checkedSum(physical.chart.slices.map(\.bytes)) == physical.chart.denominatorBytes)
+    #expect(resident.chart.denominatorBytes == 0)
+    #expect(resident.chart.slices.isEmpty)
   }
 
   @Test func groupsByBundleIDAndFallsBackToPath() {
@@ -123,6 +179,37 @@ struct SnapshotBuilderTests {
         == ["beta", "alpha"]
     )
   }
+
+  @Test func selectedMetricDrivesGroupsChartAndMemorySortTogether() {
+    let raw = Fixtures.raw(processes: [
+      .sample(id: 1, group: "footprint-heavy", footprint: 400, resident: 100),
+      .sample(id: 2, group: "resident-heavy", footprint: 100, resident: 500),
+    ])
+
+    let physical = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
+    let resident = SnapshotBuilder.build(raw: raw, metric: .residentSize)
+
+    #expect(
+      physical.filtered(searchText: "", sortOrder: .memory, ascending: false).map(\.id)
+        == ["footprint-heavy", "resident-heavy"]
+    )
+    #expect(physical.chart.slices.first { $0.kind == .group }?.id == "group:footprint-heavy")
+    #expect(
+      resident.filtered(searchText: "", sortOrder: .memory, ascending: false).map(\.id)
+        == ["resident-heavy", "footprint-heavy"]
+    )
+    #expect(resident.chart.slices.first { $0.kind == .group }?.id == "group:resident-heavy")
+  }
+}
+
+private func checkedSum(_ values: [UInt64]) -> UInt64? {
+  var total: UInt64 = 0
+  for value in values {
+    let result = total.addingReportingOverflow(value)
+    guard !result.overflow else { return nil }
+    total = result.partialValue
+  }
+  return total
 }
 
 private enum Fixtures {

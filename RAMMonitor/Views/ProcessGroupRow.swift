@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ProcessGroupRow: View {
@@ -55,11 +56,26 @@ struct ProcessGroupRow: View {
     return values.isEmpty ? nil : "Mixed"
   }
 
+  @ViewBuilder private var groupIcon: some View {
+    if let path = group.bundlePath {
+      Image(nsImage: NSWorkspace.shared.icon(forFile: path))
+        .resizable()
+        .scaledToFit()
+        .frame(width: 20, height: 20)
+        .accessibilityHidden(true)
+    } else {
+      Image(systemName: "gearshape.2")
+        .frame(width: 20, height: 20)
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
+    }
+  }
+
   private func row(_ values: Values, isChild: Bool) -> some View {
     HStack(spacing: 10) {
       HStack(spacing: 7) {
         if isChild {
-          Color.clear.frame(width: 16)
+          Color.clear.frame(width: 37)
         } else {
           Button(action: onToggle) {
             Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -68,6 +84,7 @@ struct ProcessGroupRow: View {
           .buttonStyle(.plain)
           .accessibilityLabel(
             isExpanded ? "Collapse \(values.name)" : "Expand \(values.name)")
+          groupIcon
         }
         Text(values.name).lineLimit(1)
       }
@@ -96,7 +113,7 @@ struct ProcessGroupRow: View {
     .font(isChild ? .caption : .body)
     .padding(.horizontal, 12)
     .frame(height: isChild ? 32 : 38)
-    .accessibilityElement(children: .ignore)
+    .accessibilityElement(children: isChild ? .ignore : .contain)
     .accessibilityLabel(
       "\(values.name), RAM \(ByteText.string(values.memoryBytes, binary: settings.useBinaryUnits)), CPU \(percent(values.cpuPercent)), \(optionalAccessibility(threads: values.threads, pid: values.pid, count: values.processCount, architecture: values.architecture))"
     )

@@ -53,6 +53,7 @@ struct ProcessSample: Identifiable, Hashable, Sendable {
 4. `available = totalPhysical - min(active + wired + compressed, totalPhysical)`로 계산한다.
 5. `System / Unattributed`는 전체 물리 RAM에서 프로세스 조각과 Available을 뺀 나머지다.
 6. 서로 다른 커널 통계의 시점·회계 방식 때문에 합이 물리 RAM을 넘으면, **차트 조각만** 시스템 사용량 범위로 비례 축소한다. 목록의 수집 바이트 값은 유지한다.
+7. 측정 그룹 합계가 `UInt64` 범위를 넘으면 프로세스 조각을 숨기고 `System / Unattributed`와 `Available`만으로 전체 물리 RAM을 보존한다.
 
 ```swift
 let systemUsed = min(active + wired + compressed, totalPhysical)
@@ -75,6 +76,7 @@ Resident Size는 실제 물리 RAM 전체의 구성으로 해석하지 않는다
 - 조각은 상위 8개와 `Other`만 사용한다.
 - `Available`과 `System / Unattributed`는 표시하지 않는다.
 - 중앙 라벨은 `Measured process total`로 표시한다.
+- 측정 그룹 합계가 `UInt64` 범위를 넘으면 잘못된 비율을 만들지 않고 분모 `0`, 빈 차트로 처리한다.
 
 ## 모드 전환 불변 조건
 
