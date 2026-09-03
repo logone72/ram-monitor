@@ -1056,11 +1056,11 @@ git commit -m "feat: add RAM monitor dashboard"
 - Produces: General·Columns 설정 화면, `SMAppService.mainApp` 등록 처리
 - Consumes: `MonitorModel.settings`, 설정 key와 기본값
 
-- [ ] **Step 1: 설정 key 테스트 보강**
+- [x] **Step 1: 설정 key 테스트 보강**
 
 각 key를 바꾼 뒤 새 model이 Physical Footprint/Resident Size, 새로고침 간격, 단위, 기본 정렬, 네 개 열 설정을 동일하게 복원하는지 검사한다.
 
-- [ ] **Step 2: 설정 화면 구현**
+- [x] **Step 2: 설정 화면 구현**
 
 ```swift
 Settings {
@@ -1070,7 +1070,7 @@ Settings {
 
 General에는 RAM mode, 1/2/3/5/10초, decimal/binary, RAM/CPU/name 기본 정렬, Launch at Login을 둔다. Columns에는 Threads/PID/Processes/Architecture만 둔다.
 
-- [ ] **Step 3: 로그인 시 실행 실패 복구 구현**
+- [x] **Step 3: 로그인 시 실행 실패 복구 구현**
 
 ```swift
 do {
@@ -1087,7 +1087,7 @@ do {
 
 실패하면 저장값을 바꾸지 않고 오류를 설정 화면에 표시한다.
 
-- [ ] **Step 4: 전체 테스트와 수동 재실행 확인**
+- [x] **Step 4: 전체 테스트와 수동 재실행 확인**
 
 ```bash
 xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
@@ -1096,7 +1096,7 @@ xcodebuild test -project RAMMonitor.xcodeproj -scheme RAMMonitor \
 
 앱을 재실행해 설정이 유지되고 metric 변경 시 파이 차트와 목록이 동시에 바뀌는지 확인한다.
 
-- [ ] **Step 5: 전체 검증 후 명시적으로 승인된 경우 commit**
+- [x] **Step 5: 전체 검증 후 명시적으로 승인된 경우 commit**
 
 ```bash
 make verify

@@ -13,8 +13,7 @@ struct RAMMonitorApp: App {
     .defaultSize(width: 1000, height: 680)
 
     Settings {
-      Text("Settings")
-        .padding()
+      SettingsView(model: model)
     }
   }
 }

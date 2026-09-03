@@ -61,6 +61,24 @@ struct MonitorModelTests {
     #expect(model.snapshot?.sampledAt == firstDate)
     #expect(model.lastRefreshError == "Unable to refresh processes")
   }
+
+  @Test @MainActor func failedLoginItemChangeKeepsStoredValue() throws {
+    let suite = "MonitorModelTests.loginItem"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let model = MonitorModel(defaults: defaults, sample: { makeRawSample() })
+
+    let error = SettingsView.applyLaunchAtLogin(true, to: model) { _ in
+      throw TestError.failed
+    }
+
+    #expect(!model.settings.launchAtLogin)
+    #expect(error != nil)
+
+    let success = SettingsView.applyLaunchAtLogin(true, to: model) { _ in }
+    #expect(model.settings.launchAtLogin)
+    #expect(success == nil)
+  }
 }
 
 private enum TestError: Error {

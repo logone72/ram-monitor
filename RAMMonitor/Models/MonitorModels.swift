@@ -1,11 +1,11 @@
 import Foundation
 
-enum MemoryMetric: String, CaseIterable, Sendable {
+enum MemoryMetric: String, CaseIterable, Hashable, Sendable {
   case physicalFootprint
   case residentSize
 }
 
-enum SortOrder: String, CaseIterable, Sendable {
+enum SortOrder: String, CaseIterable, Hashable, Sendable {
   case memory
   case cpu
   case name

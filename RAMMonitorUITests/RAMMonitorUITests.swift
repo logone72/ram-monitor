@@ -24,4 +24,17 @@ final class RAMMonitorUITests: XCTestCase {
     )
     XCTAssertTrue(app.searchFields["Search work units"].exists, "Search field is missing")
   }
+
+  @MainActor
+  func testSettingsOpen() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    app.typeKey(",", modifierFlags: .command)
+
+    XCTAssertTrue(
+      app.descendants(matching: .any)["settings-view"].waitForExistence(timeout: 3),
+      "Settings view is missing"
+    )
+  }
 }
