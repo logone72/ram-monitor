@@ -14,9 +14,9 @@ macOS의 여러 subprocess를 작업 단위로 묶어 **실제 RAM 점유를 한
 ## 진행도
 
 - 계획: 완료
-- 구현: `7 / 9`
-- 현재 작업: [Task 8 — 앱 식별 정보와 공개 문서](tasks.md#작업-목록)
-- 다음 작업: Task 9 — Universal DMG와 개인 Tap release
+- 구현: `8 / 9`
+- 현재 작업: [Task 9 — Universal DMG와 개인 Tap release](tasks.md#작업-목록)
+- 다음 작업: 최종 검증
 - 상세 진행도: [`tasks.md`](tasks.md)
 
 ## 세부 문서

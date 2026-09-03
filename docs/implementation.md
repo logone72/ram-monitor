@@ -1120,15 +1120,15 @@ git commit -m "feat: add monitor settings"
 - Produces: 제품 앱 아이콘, 제품 metadata, 설치·권한 설명
 - Consumes: 제품과 배포 사양
 
-- [ ] **Step 1: 새 앱 아이콘 제작과 asset 등록**
+- [x] **Step 1: 새 앱 아이콘 제작과 asset 등록**
 
 RAM 사용량을 연상시키는 원형 분할 그래픽을 제작한다.
 
-- [ ] **Step 2: README 작성**
+- [x] **Step 2: README 작성**
 
 README에는 제품 목적, 스크린샷, macOS 14+, 두 RAM 모드 차이, Sandbox 비활성화 이유, 빌드 방법, DMG 설치, Gatekeeper 최초 실행, 개인 Tap 설치, 개인정보 방침, MIT 라이선스를 포함한다.
 
-- [ ] **Step 3: 전체 검증**
+- [x] **Step 3: 전체 검증**
 
 ```bash
 make verify
@@ -1136,7 +1136,7 @@ make verify
 
 Expected: `BUILD SUCCEEDED`, `TEST SUCCEEDED`.
 
-- [ ] **Step 4: 명시적으로 승인된 경우 commit**
+- [x] **Step 4: 명시적으로 승인된 경우 commit**
 
 ```bash
 git add RAMMonitor/Assets.xcassets README.md LICENSE RAMMonitor.xcodeproj
