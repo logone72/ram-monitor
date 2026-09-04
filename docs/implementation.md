@@ -18,7 +18,7 @@
 - 제품명은 `RAM Monitor`, 프로젝트·스킴·모듈명은 `RAMMonitor`, Bundle ID는 `com.roegankim.RAMMonitor`다.
 - GitHub 저장소와 release URL은 `logone72/ram-monitor`, 개인 Tap은 `logone72/homebrew-tap`을 사용한다.
 - macOS 14 Sonoma 이상, Universal 2 `arm64 + x86_64`를 지원한다.
-- 공개 MIT 프로젝트이며 라이선스 표기는 `Copyright (c) 2026 roegankim`이다.
+- 공개 MIT 프로젝트이며 라이선스 표기는 `Copyright (c) 2026 Roegan Kim (logone72)`이다.
 - 구현의 source of truth는 `docs/`와 활성 macOS SDK다.
 - App Sandbox는 비활성화하고 Hardened Runtime은 활성화한다.
 - Apple 시스템 프레임워크만 사용하고 외부 dependency를 추가하지 않는다.
@@ -1190,7 +1190,15 @@ Expected: `arm64 x86_64`, codesign 성공, DMG verify 성공.
 
 `v*` tag에서 checkout → `make verify` → `build-release.sh` → GitHub Release asset 업로드 순서로 실행한다. workflow permission은 `contents: write`만 부여한다.
 
-- [ ] **Step 5: 개인 Tap cask 생성**
+- [ ] **Step 5: 사용자 직접 테스트**
+
+사용자가 로컬 앱을 직접 실행해 RAM 모드 전환, 차트, 그룹 목록, subprocess 확장, 검색, 정렬, 열 설정과 새로고침을 확인한다. 발견한 문제와 개선 의견을 기록한다.
+
+- [ ] **Step 6: 피드백 반영과 재검증**
+
+사용자 피드백을 반영하고 관련 테스트와 `make verify`를 실행한다. 새 DMG를 생성해 `--verify-only` 검증까지 다시 통과한 뒤에만 라이브 배포 단계로 넘어간다.
+
+- [ ] **Step 7: 개인 Tap cask 생성**
 
 GitHub Release의 실제 SHA-256을 사용해 `Casks/ram-monitor.rb`를 생성하고 다음 명령으로 검사한다.
 
@@ -1203,13 +1211,13 @@ Expected: audit 통과, `/Applications/RAM Monitor.app` 설치.
 
 로컬 산출물 `release/ram-monitor.rb`는 실제 DMG checksum으로 생성되며 임시 Tap에서 `brew style`과 `brew audit --cask --strict`를 통과했다. 공개 Release URL과 `logone72/homebrew-tap` 생성 후 온라인 audit·설치를 수행한다.
 
-- [ ] **Step 6: 깨끗한 사용자 설치 흐름 확인**
+- [ ] **Step 8: 깨끗한 사용자 설치 흐름 확인**
 
 GitHub DMG와 Homebrew 설치를 각각 수행하고 우클릭 Open 또는 Privacy & Security의 Open Anyway 안내로 최초 실행되는지 확인한다. 앱이 관리자 암호를 요구하지 않는지 확인한다.
 
 로컬 Release 앱 실행 smoke test는 통과했다. 격리 속성이 붙는 실제 다운로드와 깨끗한 사용자 환경 검증은 공개 Release 발행 후 수행한다.
 
-- [x] **Step 7: full verification**
+- [x] **Step 9: full verification**
 
 ```bash
 make verify
@@ -1217,14 +1225,14 @@ make verify
 
 Expected: 모든 테스트 통과.
 
-- [x] **Step 8: 명시적으로 승인된 release commit**
+- [x] **Step 10: 명시적으로 승인된 release commit**
 
 ```bash
 git add scripts .github README.md
 git commit -m "build: add unsigned DMG release pipeline"
 ```
 
-- [ ] **Step 9: 명시적으로 승인된 tag와 원격 release**
+- [ ] **Step 11: 명시적으로 승인된 tag와 원격 release**
 
 ```bash
 git tag v0.1.0
@@ -1243,6 +1251,7 @@ git tag v0.1.0
 - [x] 하나의 통합 그룹 목록과 subprocess 확장 동작 확인
 - [x] macOS 14 deployment target과 Universal 2 binary 확인
 - [x] `make check`와 `make verify` 통과
+- [ ] 사용자 직접 테스트와 피드백 반영 후 재검증
 - [ ] pull request와 `main` push에서 CI `verify` job 통과
 - [ ] GitHub DMG와 개인 Tap 설치 흐름 확인
 - [x] 유료 Developer ID 없이 배포된다는 한계를 사용자 문서에 명시

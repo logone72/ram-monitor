@@ -6,8 +6,8 @@
 
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
-- 다음 작업: 공개 GitHub Release와 personal Tap 설치 검증
-- 마지막 갱신: 2026-09-03
+- 다음 작업: 사용자 직접 테스트와 피드백 반영
+- 마지막 갱신: 2026-09-04
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
 
@@ -23,11 +23,19 @@
 | [6. 파이 차트와 통합 작업 목록](implementation.md#task-6-파이-차트와-통합-작업-목록) | 단일 화면의 차트, 그룹 목록과 상호작용 | 5 | 완료 | 전체 unit test와 UI smoke test 통과 |
 | [7. 설정과 로그인 시 실행](implementation.md#task-7-설정과-로그인-시-실행) | 설정 화면과 SMAppService 연결 | 5, 6 | 완료 | 설정·등록 실패 복구 검사 통과 |
 | [8. 앱 식별 정보와 공개 문서](implementation.md#task-8-앱-식별-정보와-공개-문서) | 앱 아이콘, metadata, README와 라이선스 | 6, 7 | 완료 | 제품 식별 정보 확인과 `make verify` 통과 |
-| [9. Universal DMG와 개인 Tap release](implementation.md#task-9-universal-dmg와-개인-tap-release) | Universal 2 DMG, SHA-256, release workflow와 cask | 8 | 진행 중 | 산출물·서명·DMG·Tap 설치 검증 통과 |
+| [9. Universal DMG와 개인 Tap release](implementation.md#task-9-universal-dmg와-개인-tap-release) | 사용자 테스트와 개선을 거친 Universal 2 DMG, release workflow와 cask | 8 | 진행 중 | 직접 테스트·피드백 반영·재검증 후 DMG·Tap 설치 검증 통과 |
+
+## Task 9 배포 전 게이트
+
+- [ ] 사용자가 로컬 앱을 직접 실행하고 주요 동작을 확인한다.
+- [ ] 확인된 피드백을 반영한다.
+- [ ] 변경 후 `make verify`와 로컬 DMG 검증을 다시 통과한다.
+- [ ] 위 단계가 끝난 뒤 공개 GitHub Release와 personal Tap 배포를 진행한다.
 
 ## 전체 완료 조건
 
 - Task 1~9가 모두 `완료`
 - [`implementation.md`](implementation.md)의 완료 조건 충족
 - 최종 `make verify` 통과
+- 사용자 직접 테스트와 피드백 반영 완료
 - 실제 DMG와 Homebrew 설치 흐름 확인
