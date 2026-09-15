@@ -51,6 +51,40 @@
 
 이번 개선은 Task 9의 배포 전 피드백 반영에 해당한다. 공개 Release·Tap 배포 및 로컬 DMG 재검증은 아직 완료하지 않았다.
 
+### 차트·목록 선택 연동
+
+- [x] 이전 차트 회계·헤더 개선을 `81e2bf2`로 커밋
+- [x] 조각·범례 호버 강조와 짧은 애니메이션, 동작 줄이기 설정 대응
+- [x] 목록 선택 → 그룹 조각 강조, 호버 종료 → 기존 선택 강조 복귀, 새 키보드 선택 시 이전 호버 해제
+- [x] 조각·범례 클릭 → 부모 행 선택·스크롤·키보드 포커스, 숨겨진 대상의 검색 해제
+- [x] 화면 밖 항목 및 펼친 그룹의 부모 행 이동, 고정 헤더에 가리지 않도록 위치 조정
+- [x] 그룹 ID 기준 선택 유지, Other·측정 불가·0 처리, 사라진 그룹 선택 해제
+- [x] 새 회귀 테스트와 전체 `make verify` 통과 — 단위 28개·UI 10개, 포맷·lint·build·Analyze 통과
+
+2026-09-15 최초 검증: 화면 밖 그룹 이동, 펼친 그룹의 부모 행이 고정 헤더에 가리지 않음, 검색 해제 및 방향키 포커스, 호버 중 키보드 선택 변경(`Other` 내부 이동 포함)을 실제 앱 UI 테스트로 확인했다. 첫 화면 검사는 이전 테스트의 마우스 위치에 영향받지 않도록 호버를 명시적으로 해제한다. 재클릭 동작은 아래 추가 피드백에 따라 선택 해제로 변경했다.
+
+신규 상호작용 변경 파일: `RAMMonitor/ViewModels/MonitorModel.swift`, `RAMMonitor/Views/MemoryPieChart.swift`, `RAMMonitor/Views/MonitorView.swift`, `RAMMonitor/Views/ProcessGroupRow.swift`, `RAMMonitorTests/MonitorModelTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`, `README.md`, `README.ko.md`, `docs/interface.md`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`.
+
+### 선택 해제 피드백
+
+- [x] 선택된 조각·범례·목록 행 재클릭 시 선택과 강조 해제
+- [x] 차트 중앙·제목·빈 목록·정렬·펼치기 버튼·검색창·Other로 해제
+- [x] 해제 직후 남아 있는 포인터로 다시 강조되지 않도록 처리하고, 호버 재진입 시 정상 복귀
+- [x] 해제 시 대기 중인 목록 스크롤 취소, 재선택 시 부모 행 이동 유지
+- [x] 최종 `make verify` 통과 — 단위 28개·UI 13개, 포맷·lint·build·Analyze 통과
+
+재클릭 해제 전 UI 테스트에서 선택과 항목명이 남는 것을 재현했다. 검색창 클릭도 별도로 재현·수정했다. 호버 회귀 검사 중 Chrome 창의 개입 기록이 있는 실패가 한 번 있었고, 같은 검사를 두 번 연속 재실행해 통과했다.
+
+최종 전체 검증에서는 기존 호버·키보드·스크롤 연동과 신규 선택 해제 검사가 모두 통과했다.
+
+이번 수정 파일:
+
+- 앱: `RAMMonitor/ViewModels/MonitorModel.swift`, `RAMMonitor/Views/MemoryPieChart.swift`, `RAMMonitor/Views/MonitorView.swift`
+- 테스트: `RAMMonitorTests/MonitorModelTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`
+- 문서: `README.md`, `README.ko.md`, `docs/interface.md`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`
+
+### 이전 차트 회계·헤더 검증 기록
+
 검증에서 기존 헤더와 RAM 행의 오른쪽 끝이 16pt 어긋나는 것을 재현했고 수정 후 1pt 이내로 일치했다. 물리 RAM보다 큰 Footprint 합계, 일부 측정 불가·0·overflow, 모드 전환, 스크롤바 설정과 선택 열 표시·숨김, 스크롤 중 헤더 고정, 작은 창의 요약 접근을 검사했다. 실제 앱 화면에서도 원본 바이트 일치와 독립 스크롤을 확인했다.
 
 변경 파일:

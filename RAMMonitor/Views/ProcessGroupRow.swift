@@ -33,6 +33,10 @@ struct ProcessGroupRow: View {
       .background(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
       .contentShape(Rectangle())
       .onTapGesture(perform: onSelect)
+      .id("row:\(group.id)")
+      .accessibilityIdentifier("work-unit:\(group.id)")
+      .accessibilityAddTraits(isSelected ? .isSelected : [])
+      .accessibilityAction { onSelect() }
 
       if isExpanded {
         ForEach(group.processes) { process in
@@ -49,6 +53,9 @@ struct ProcessGroupRow: View {
             isChild: true
           )
           .background(Color.secondary.opacity(0.04))
+          .contentShape(Rectangle())
+          .onTapGesture(perform: onSelect)
+          .accessibilityAction { onSelect() }
         }
       }
 

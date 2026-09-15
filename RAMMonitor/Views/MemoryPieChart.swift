@@ -6,8 +6,14 @@ struct MemoryPieChart: View {
   let metric: MemoryMetric
   let totalPhysicalBytes: UInt64?
   let useBinaryUnits: Bool
+  let selectedGroupID: String?
+  let selectedSliceID: String?
+  let onSelectSlice: (String?) -> Void
 
   @State private var hoveredSliceID: String?
+  @State private var suppressedHoverSliceID: String?
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.isSearching) private var isSearching
 
   var body: some View {
     VStack(spacing: 18) {
@@ -22,10 +28,12 @@ struct MemoryPieChart: View {
             angularInset: 1
           )
           .foregroundStyle(color(for: slice, at: index))
+          .opacity(activeSlice == nil || activeSlice?.id == slice.id ? 1 : 0.35)
           .accessibilityLabel(slice.label)
           .accessibilityValue(accessibilityValue(for: slice))
         }
         .chartLegend(.hidden)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: activeSlice?.id)
         .frame(width: 230, height: 230)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("memory-pie-chart")
@@ -36,22 +44,25 @@ struct MemoryPieChart: View {
               .onContinuousHover { phase in
                 switch phase {
                 case .active(let location):
-                  hoveredSliceID = sliceID(at: location, in: geometry.size)
+                  updateHover(sliceID(at: location, in: geometry.size))
                 case .ended:
-                  hoveredSliceID = nil
+                  updateHover(nil)
                 }
+              }
+              .onTapGesture { location in
+                selectSlice(sliceID(at: location, in: geometry.size))
               }
           }
         }
 
         VStack(spacing: 3) {
-          if let hoveredSlice {
-            Text(hoveredSlice.label)
+          if let activeSlice {
+            Text(activeSlice.label)
               .font(.caption)
               .lineLimit(1)
-            Text(ByteText.string(hoveredSlice.bytes, binary: useBinaryUnits))
+            Text(ByteText.string(activeSlice.bytes, binary: useBinaryUnits))
               .font(.headline.monospacedDigit())
-            Text(percentage(hoveredSlice.bytes))
+            Text(percentage(activeSlice.bytes))
               .font(.caption)
               .foregroundStyle(.secondary)
           } else {
@@ -64,24 +75,31 @@ struct MemoryPieChart: View {
         }
         .multilineTextAlignment(.center)
         .frame(width: 120)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(activeSlice?.label ?? "Measured process total")
+        .accessibilityValue(
+          activeSlice.map(accessibilityValue)
+            ?? ByteText.string(chart.denominatorBytes, binary: useBinaryUnits)
+        )
+        .accessibilityIdentifier("chart-center")
         .allowsHitTesting(false)
       }
 
       VStack(alignment: .leading, spacing: 7) {
         ForEach(Array(chart.slices.enumerated()), id: \.element.id) { index, slice in
-          HStack(spacing: 7) {
-            Circle()
-              .fill(color(for: slice, at: index))
-              .frame(width: 8, height: 8)
-            Text(slice.label)
-              .lineLimit(1)
-            Spacer(minLength: 4)
-            Text(ByteText.string(slice.bytes, binary: useBinaryUnits))
-              .foregroundStyle(.secondary)
-              .monospacedDigit()
+          Button {
+            selectSlice(slice.id)
+          } label: {
+            legendLabel(for: slice, at: index)
           }
-          .font(.caption)
-          .accessibilityElement(children: .combine)
+          .buttonStyle(.plain)
+          .accessibilityLabel(slice.label)
+          .accessibilityValue(accessibilityValue(for: slice))
+          .accessibilityAddTraits(selectedSliceID == slice.id ? .isSelected : [])
+          .accessibilityIdentifier("chart-legend:\(slice.id)")
+          .onHover { hovering in
+            updateHover(hovering ? slice.id : nil)
+          }
         }
       }
       .frame(maxWidth: 240)
@@ -104,10 +122,51 @@ struct MemoryPieChart: View {
     }
     .padding(24)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .onChange(of: selectedGroupID) {
+      if let hoveredSliceID { suppressedHoverSliceID = hoveredSliceID }
+      hoveredSliceID = nil
+    }
+    .onChange(of: isSearching) {
+      if isSearching { selectSlice(nil) }
+    }
   }
 
-  private var hoveredSlice: ChartSlice? {
+  private func selectSlice(_ id: String?) {
+    suppressedHoverSliceID = id
+    hoveredSliceID = nil
+    onSelectSlice(id)
+  }
+
+  private func updateHover(_ id: String?) {
+    if id != suppressedHoverSliceID { suppressedHoverSliceID = nil }
+    hoveredSliceID = id == suppressedHoverSliceID ? nil : id
+  }
+
+  private var activeSlice: ChartSlice? {
     chart.slices.first { $0.id == hoveredSliceID }
+      ?? chart.slices.first { $0.id == selectedSliceID }
+  }
+
+  private func legendLabel(for slice: ChartSlice, at index: Int) -> some View {
+    HStack(spacing: 7) {
+      Circle()
+        .fill(color(for: slice, at: index))
+        .frame(width: 8, height: 8)
+      Text(slice.label).lineLimit(1)
+      Spacer(minLength: 4)
+      Text(ByteText.string(slice.bytes, binary: useBinaryUnits))
+        .foregroundStyle(.secondary)
+        .monospacedDigit()
+    }
+    .font(.caption)
+    .padding(.vertical, 3)
+    .contentShape(Rectangle())
+    .background {
+      RoundedRectangle(cornerRadius: 4)
+        .fill(color(for: slice, at: index).opacity(activeSlice?.id == slice.id ? 0.12 : 0))
+        .padding(.horizontal, -4)
+    }
+    .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: activeSlice?.id)
   }
 
   private func sliceID(at location: CGPoint, in size: CGSize) -> String? {

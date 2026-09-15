@@ -5,6 +5,85 @@ import Testing
 
 @Suite("MonitorModel")
 struct MonitorModelTests {
+  @Test(arguments: [UInt64?.none, 0, 100])
+  @MainActor func selectionUsesGroupIdentityAndOnlyHighlightsMeasuredMemory(bytes: UInt64?) throws {
+    let defaults = try #require(UserDefaults(suiteName: #function + "\(bytes ?? 0)"))
+    let model = MonitorModel(defaults: defaults, sample: { makeRawSample() })
+    let raw = makeRawSample()
+    let sameNameProcess = ProcessSample(
+      id: .init(pid: 2, startTime: 1), parentID: 0, name: "editor",
+      path: "/Applications/AnotherEditor.app/Contents/MacOS/Editor",
+      bundle: .init(
+        id: "com.example.other-editor", displayName: "Editor",
+        path: "/Applications/AnotherEditor.app"),
+      physicalFootprintBytes: bytes, residentSizeBytes: 50,
+      cpuPercent: nil, threadCount: nil, architecture: nil)
+    let sample = RawMonitorSample(
+      processes: raw.processes + [sameNameProcess], systemMemory: raw.systemMemory,
+      sampledAt: raw.sampledAt)
+    model.snapshot = SnapshotBuilder.build(raw: sample, metric: .physicalFootprint)
+
+    model.selectedGroupID = "com.example.other-editor"
+    #expect(model.selectedChartSliceID == (bytes == 100 ? "group:com.example.other-editor" : nil))
+    #expect(model.selectChartSlice("group:com.example.editor"))
+    #expect(model.selectedGroupID == "com.example.editor")
+
+    model.snapshot = SnapshotBuilder.build(
+      raw: sample, metric: .physicalFootprint, topSliceCount: 0)
+    model.selectedGroupID = "com.example.other-editor"
+    #expect(model.selectedChartSliceID == (bytes == 100 ? "other" : nil))
+  }
+
+  @Test @MainActor func chartAndListToggleSelectionAndClearOnNonGroupClicks() async throws {
+    let defaults = try #require(UserDefaults(suiteName: #function))
+    defaults.removePersistentDomain(forName: #function)
+    defer { defaults.removePersistentDomain(forName: #function) }
+    let model = MonitorModel(defaults: defaults, sample: { makeRawSample() })
+    await model.refresh()
+
+    model.selectedGroupID = "com.example.editor"
+    #expect(model.selectedChartSliceID == "group:com.example.editor")
+    model.settings.memoryMetric = .residentSize
+    #expect(model.selectedChartSliceID == "group:com.example.editor")
+    await model.refresh()
+    #expect(model.selectedGroupID == "com.example.editor")
+
+    model.searchText = "Editor"
+    #expect(!model.selectChartSlice("group:com.example.editor"))
+    #expect(model.searchText == "Editor")
+    #expect(model.selectedGroupID == nil)
+    model.toggleGroupSelection("com.example.editor")
+    #expect(model.selectedGroupID == "com.example.editor")
+    model.toggleGroupSelection("com.example.editor")
+    #expect(model.selectedGroupID == nil)
+    model.searchText = "no matching work unit"
+    model.selectedGroupID = nil
+    #expect(model.selectChartSlice("group:com.example.editor"))
+    #expect(model.searchText.isEmpty)
+    #expect(model.selectedGroupID == "com.example.editor")
+    #expect(!model.selectChartSlice("missing"))
+    #expect(model.selectedGroupID == nil)
+
+    model.selectedGroupID = "com.example.editor"
+    model.snapshot = SnapshotBuilder.build(
+      raw: makeRawSample(), metric: .physicalFootprint, topSliceCount: 0)
+    #expect(model.selectedChartSliceID == "other")
+    #expect(!model.selectChartSlice("other"))
+    #expect(model.selectedGroupID == nil)
+    model.selectedGroupID = "com.example.editor"
+    #expect(!model.selectChartSlice(nil))
+    #expect(model.selectedGroupID == nil)
+
+    model.selectedGroupID = "com.example.editor"
+    let raw = makeRawSample()
+    model.snapshot = SnapshotBuilder.build(
+      raw: RawMonitorSample(
+        processes: [], systemMemory: raw.systemMemory, sampledAt: raw.sampledAt),
+      metric: .physicalFootprint)
+    #expect(model.selectedGroupID == nil)
+    #expect(model.selectedChartSliceID == nil)
+  }
+
   @Test @MainActor func refreshPublishesOneCoherentSnapshot() async throws {
     let raw = makeRawSample()
     let defaults = try #require(UserDefaults(suiteName: #function))

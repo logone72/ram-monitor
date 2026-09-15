@@ -2,7 +2,9 @@ import SwiftUI
 
 struct MonitorView: View {
   @Bindable var model: MonitorModel
-  @State private var selectedGroupID: String?
+  @State private var listFocusRequest = 0
+  @State private var pendingScrollGroupID: String?
+  @FocusState private var isListFocused: Bool
 
   var body: some View {
     VStack(spacing: 0) {
@@ -17,7 +19,12 @@ struct MonitorView: View {
               chart: model.snapshot?.chart ?? emptyChart,
               metric: model.settings.memoryMetric,
               totalPhysicalBytes: model.snapshot?.totalPhysicalBytes,
-              useBinaryUnits: model.settings.useBinaryUnits
+              useBinaryUnits: model.settings.useBinaryUnits,
+              selectedGroupID: model.selectedGroupID,
+              selectedSliceID: model.selectedChartSliceID,
+              onSelectSlice: { id in
+                if model.selectChartSlice(id) { listFocusRequest += 1 }
+              }
             )
           }
           .accessibilityIdentifier("memory-summary-scroll")
@@ -28,6 +35,11 @@ struct MonitorView: View {
           workUnitList
         }
       }
+    }
+    .contentShape(Rectangle())
+    .onTapGesture { model.selectedGroupID = nil }
+    .onChange(of: model.selectedGroupID) {
+      if model.selectedGroupID == nil { pendingScrollGroupID = nil }
     }
     .navigationTitle("RAM Monitor")
     .searchable(text: $model.searchText, prompt: "Search work units")
@@ -41,49 +53,69 @@ struct MonitorView: View {
 
   private var workUnitList: some View {
     let visibleGroups = model.visibleGroups
-    return ScrollView {
-      LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-        Section {
-          ForEach(visibleGroups) { group in
-            ProcessGroupRow(
-              group: group,
-              metric: model.settings.memoryMetric,
-              settings: model.settings,
-              isExpanded: model.expandedGroupIDs.contains(group.id),
-              isSelected: selectedGroupID == group.id,
-              onToggle: { toggle(group.id) },
-              onSelect: { selectedGroupID = group.id }
-            )
+    return ScrollViewReader { proxy in
+      ScrollView {
+        LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+          Section {
+            ForEach(visibleGroups) { group in
+              ProcessGroupRow(
+                group: group,
+                metric: model.settings.memoryMetric,
+                settings: model.settings,
+                isExpanded: model.expandedGroupIDs.contains(group.id),
+                isSelected: model.selectedGroupID == group.id,
+                onToggle: { toggle(group.id) },
+                onSelect: {
+                  model.toggleGroupSelection(group.id)
+                  isListFocused = true
+                }
+              )
+              .task(id: pendingScrollGroupID) {
+                guard pendingScrollGroupID == group.id, model.selectedGroupID == group.id else {
+                  return
+                }
+                proxy.scrollTo("row:\(group.id)", anchor: .center)
+                pendingScrollGroupID = nil
+              }
+            }
+          } header: {
+            VStack(spacing: 0) {
+              columnHeaders
+              Divider()
+            }
+            .background(.background)
           }
-        } header: {
-          VStack(spacing: 0) {
-            columnHeaders
-            Divider()
-          }
-          .background(.background)
         }
       }
-    }
-    .overlay {
-      Group {
-        if model.snapshot == nil {
-          ContentUnavailableView("Loading processes", systemImage: "memorychip")
-        } else if visibleGroups.isEmpty {
-          ContentUnavailableView("No matching work units", systemImage: "magnifyingglass")
-            .accessibilityLabel("No matching work units")
-            .accessibilityIdentifier("no-matching-work-units")
+      .overlay {
+        Group {
+          if model.snapshot == nil {
+            ContentUnavailableView("Loading processes", systemImage: "memorychip")
+          } else if visibleGroups.isEmpty {
+            ContentUnavailableView("No matching work units", systemImage: "magnifyingglass")
+              .accessibilityLabel("No matching work units")
+              .accessibilityIdentifier("no-matching-work-units")
+          }
         }
+        .padding(.top, 36)
+        .allowsHitTesting(false)
       }
-      .padding(.top, 36)
-      .allowsHitTesting(false)
+      .focusable()
+      .focused($isListFocused)
+      .onKeyPress(.downArrow) { moveSelection(by: 1) }
+      .onKeyPress(.upArrow) { moveSelection(by: -1) }
+      .onKeyPress(.leftArrow) { collapseSelection() }
+      .onKeyPress(.rightArrow) { expandSelection() }
+      .accessibilityElement(children: .contain)
+      .accessibilityIdentifier("work-unit-list")
+      .onChange(of: listFocusRequest) {
+        guard let id = model.selectedGroupID else { return }
+        // Realize the lazy group first; its task then reveals the parent row below the pinned header.
+        proxy.scrollTo(id, anchor: .top)
+        pendingScrollGroupID = id
+        isListFocused = true
+      }
     }
-    .focusable()
-    .onKeyPress(.downArrow) { moveSelection(by: 1) }
-    .onKeyPress(.upArrow) { moveSelection(by: -1) }
-    .onKeyPress(.leftArrow) { collapseSelection() }
-    .onKeyPress(.rightArrow) { expandSelection() }
-    .accessibilityElement(children: .contain)
-    .accessibilityIdentifier("work-unit-list")
   }
 
   private var columnHeaders: some View {
@@ -116,6 +148,7 @@ struct MonitorView: View {
 
   private func sortButton(_ title: String, order: SortOrder) -> some View {
     Button {
+      model.selectedGroupID = nil
       model.selectSortOrder(order)
     } label: {
       HStack(spacing: 3) {
@@ -148,6 +181,7 @@ struct MonitorView: View {
   }
 
   private func toggle(_ id: String) {
+    model.selectedGroupID = nil
     if model.expandedGroupIDs.contains(id) {
       model.expandedGroupIDs.remove(id)
     } else {
@@ -158,20 +192,21 @@ struct MonitorView: View {
   private func moveSelection(by offset: Int) -> KeyPress.Result {
     let groups = model.visibleGroups
     guard !groups.isEmpty else { return .ignored }
-    let current = groups.firstIndex { $0.id == selectedGroupID }
+    let current = groups.firstIndex { $0.id == model.selectedGroupID }
     let next = min(max((current ?? (offset > 0 ? -1 : groups.count)) + offset, 0), groups.count - 1)
-    selectedGroupID = groups[next].id
+    model.selectedGroupID = groups[next].id
+    listFocusRequest += 1
     return .handled
   }
 
   private func collapseSelection() -> KeyPress.Result {
-    guard let selectedGroupID else { return .ignored }
+    guard let selectedGroupID = model.selectedGroupID else { return .ignored }
     model.expandedGroupIDs.remove(selectedGroupID)
     return .handled
   }
 
   private func expandSelection() -> KeyPress.Result {
-    guard let selectedGroupID else { return .ignored }
+    guard let selectedGroupID = model.selectedGroupID else { return .ignored }
     model.expandedGroupIDs.insert(selectedGroupID)
     return .handled
   }

@@ -6,7 +6,15 @@ typealias SampleProvider = @Sendable () async throws -> RawMonitorSample
 @Observable
 @MainActor
 final class MonitorModel {
-  var snapshot: MonitorSnapshot?
+  var snapshot: MonitorSnapshot? {
+    didSet {
+      guard let selectedGroupID else { return }
+      if snapshot?.groups.contains(where: { $0.id == selectedGroupID }) != true {
+        self.selectedGroupID = nil
+      }
+    }
+  }
+  var selectedGroupID: String?
   var searchText = ""
   var sortOrder: SortOrder
   var sortAscending: Bool
@@ -38,6 +46,34 @@ final class MonitorModel {
 
   var isShowingStaleData: Bool {
     consecutiveRefreshFailures >= 2 && snapshot != nil
+  }
+
+  var selectedChartSliceID: String? {
+    guard let snapshot,
+      let group = snapshot.groups.first(where: { $0.id == selectedGroupID }),
+      let bytes = group.memoryBytes(for: snapshot.metric), bytes > 0
+    else { return nil }
+    return snapshot.chart.slices.first { $0.id == "group:\(group.id)" }?.id
+      ?? snapshot.chart.slices.first { $0.kind == .other }?.id
+  }
+
+  @discardableResult
+  func selectChartSlice(_ sliceID: String?) -> Bool {
+    guard let snapshot,
+      snapshot.chart.slices.contains(where: { $0.id == sliceID && $0.kind == .group }),
+      let group = snapshot.groups.first(where: { "group:\($0.id)" == sliceID })
+    else {
+      selectedGroupID = nil
+      return false
+    }
+    toggleGroupSelection(group.id)
+    guard selectedGroupID != nil else { return false }
+    if !visibleGroups.contains(where: { $0.id == group.id }) { searchText = "" }
+    return true
+  }
+
+  func toggleGroupSelection(_ groupID: String) {
+    selectedGroupID = selectedGroupID == groupID ? nil : groupID
   }
 
   @ObservationIgnored private let defaults: UserDefaults

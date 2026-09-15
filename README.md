@@ -24,6 +24,8 @@ Choose the metric in Settings (`⌘,`). In both modes, the pie uses the measured
 
 Search filters the list, not the chart. Compare totals with search cleared, counting each parent group once rather than adding its expanded subprocess rows again. Unavailable readings appear as `—` and are excluded from totals; CPU usage can exceed 100% across multiple cores.
 
+Hover a slice or legend entry to highlight it; selecting a list row highlights its group in the chart. Click a group slice or legend entry to select and reveal its row, clearing the search if needed. Click the selected item again, the chart center, or a non-selection area to clear selection and highlighting. Clicking `Other` also clears the highlight without selecting an individual row.
+
 ## Build and run
 
 No paid Apple Developer account or signing certificate is required for local development.
