@@ -1,6 +1,49 @@
+import AppKit
 import XCTest
 
 final class RAMMonitorUITests: XCTestCase {
+  @MainActor
+  func testInitialSummaryFitsWithoutScrolling() throws {
+    let app = XCUIApplication()
+    app.launchArguments = ["-AppleShowScrollBars", "Always", "-refreshInterval", "10"]
+    app.launch()
+    XCTAssertTrue(app.buttons["chart-legend:other"].waitForExistence(timeout: 5))
+    let scroll = app.scrollViews["memory-summary-scroll"]
+    let summary = app.descendants(matching: .any)["physical-ram-summary"]
+    let initialPosition = summary.frame.minY
+    scroll.scroll(byDeltaX: 0, deltaY: -300)
+    XCTAssertEqual(summary.frame.minY, initialPosition, accuracy: 0.5)
+    XCTAssertTrue(summary.isHittable)
+  }
+
+  @MainActor
+  func testListFocusDoesNotTintPaneDivider() throws {
+    let app = XCUIApplication()
+    app.launchArguments = ["-AppleAccentColor", "4", "-defaultSortOrder", "memory"]
+    app.launch()
+    let legend = app.buttons.matching(
+      NSPredicate(format: "identifier BEGINSWITH 'chart-legend:group:'")
+    ).firstMatch
+    XCTAssertTrue(legend.waitForExistence(timeout: 5))
+    legend.click()
+    XCTAssertTrue(legend.isSelected)
+    let window = app.windows["RAM Monitor"]
+    let list = app.scrollViews.containing(.button, identifier: "Sort by RAM").firstMatch
+    let bitmap = try XCTUnwrap(NSBitmapImageRep(data: window.screenshot().pngRepresentation))
+    let scale = Double(bitmap.pixelsWide) / window.frame.width
+    let pixelY = Int((list.frame.midY - window.frame.minY) * scale)
+    let edge = Int((list.frame.minX - window.frame.minX) * scale)
+    var maximumBlueTint = 0.0
+    for pixelX in (edge - Int(4 * scale))...edge {
+      let color = try XCTUnwrap(bitmap.colorAt(x: pixelX, y: pixelY)?.usingColorSpace(.deviceRGB))
+      maximumBlueTint = max(maximumBlueTint, color.blueComponent - color.redComponent)
+    }
+    XCTAssertLessThan(
+      maximumBlueTint, 0.08, "List focus must not draw a blue border between panes")
+    app.typeKey(.downArrow, modifierFlags: [])
+    XCTAssertFalse(legend.isSelected, "Removing the focus ring must preserve keyboard navigation")
+  }
+
   @MainActor
   func testRepeatedSelectionClearsHighlight() throws {
     let app = XCUIApplication()

@@ -26,6 +26,7 @@ struct MonitorView: View {
                 if model.selectChartSlice(id) { listFocusRequest += 1 }
               }
             )
+            .background { SummaryScrollConfiguration().allowsHitTesting(false) }
           }
           .accessibilityIdentifier("memory-summary-scroll")
           .frame(width: max(300, geometry.size.width * 0.36))
@@ -101,6 +102,7 @@ struct MonitorView: View {
         .allowsHitTesting(false)
       }
       .focusable()
+      .focusEffectDisabled()
       .focused($isListFocused)
       .onKeyPress(.downArrow) { moveSelection(by: 1) }
       .onKeyPress(.upArrow) { moveSelection(by: -1) }

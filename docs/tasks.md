@@ -83,6 +83,28 @@
 - 테스트: `RAMMonitorTests/MonitorModelTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`
 - 문서: `README.md`, `README.ko.md`, `docs/interface.md`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`
 
+### 차트·목록 사이 포커스 테두리
+
+- [x] 목록에 포커스가 갈 때 나타나는 하늘색 시스템 테두리를 재현하고 경계 픽셀 검사 추가
+- [x] 목록의 포커스 효과만 비활성화하고 중립색 구분선·행 선택 표시·방향키 이동 유지
+- [x] 수정 전 픽셀 검사 실패 → 수정 후 통과, 실제 선택 화면에서도 테두리 제거 확인
+- [x] 최종 수정본의 테두리·방향키 검사, 포맷·lint·빌드·Analyze 통과
+- [ ] 전체 `make verify`: 기존 호버 UI 검사 실패로 미통과. 이번 수정 제외 후 비교 실행에서도 같은 실패를 확인했다.
+
+단위 28개와 테두리 픽셀·방향키 검사는 통과했다. 전체 UI 검사에서 클릭 위치 탐색·호버 실패가 발생했고, 빈 목록 클릭은 재실행에서 통과했다. 기존 호버 검사의 `Google Chrome`/`ChatGPT` 불일치는 포커스 테두리 수정 전 코드에서도 재현되어 별도 확인이 필요하다.
+
+변경 파일: `RAMMonitor/Views/MonitorView.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/interface.md`, `docs/tasks.md`.
+
+### 왼쪽 오버레이와 초기 창 높이
+
+- [x] 왼쪽만 오버레이·자동 숨김 적용, 오른쪽의 시스템 스크롤바 설정 유지
+- [x] 전체 범례 9개와 설명의 실제 높이 642pt 측정 → 툴바 포함 기본 높이 694pt 적용
+- [x] 이전의 작은 창 크기가 복원되면 처음에만 높이 보정, 이후 수동 축소·스크롤 허용
+- [x] 실제 기본 창에서 스크롤해도 콘텐츠 위치가 변하지 않음, 작은 창에서는 하단 요약까지 스크롤 가능
+- [x] 단위 30개·관련 UI 6개, 포맷·lint·빌드·Analyze 통과. 전체 UI 재검증은 아니며 기존 호버 검사 실패는 앞 항목에 별도 기록되어 있다.
+
+변경 파일: `RAMMonitor/RAMMonitorApp.swift`, `RAMMonitor/Views/MonitorView.swift`, `RAMMonitor/Views/SummaryScrollConfiguration.swift`, `RAMMonitorTests/MemoryLayoutTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/interface.md`, `docs/tasks.md`.
+
 ### 이전 차트 회계·헤더 검증 기록
 
 검증에서 기존 헤더와 RAM 행의 오른쪽 끝이 16pt 어긋나는 것을 재현했고 수정 후 1pt 이내로 일치했다. 물리 RAM보다 큰 Footprint 합계, 일부 측정 불가·0·overflow, 모드 전환, 스크롤바 설정과 선택 열 표시·숨김, 스크롤 중 헤더 고정, 작은 창의 요약 접근을 검사했다. 실제 앱 화면에서도 원본 바이트 일치와 독립 스크롤을 확인했다.
