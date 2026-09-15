@@ -342,11 +342,11 @@ private func systemMemory() throws -> SystemMemorySample {
 }
 ```
 
-`checkedBytes`는 `UInt64(pages).multipliedReportingOverflow(by: UInt64(pageSize))`만 감싼 private helper다. `active + wired + compressed`와 차트 회계는 [`memory.md`](memory.md)의 규칙대로 `SnapshotBuilder`에서 checked arithmetic으로 수행한다.
+`checkedBytes`는 `UInt64(pages).multipliedReportingOverflow(by: UInt64(pageSize))`만 감싼 private helper다. 프로세스 차트 합계는 [`memory.md`](memory.md)의 규칙대로 `SnapshotBuilder`에서 checked arithmetic으로 수행하며 VM page count와 섞지 않는다.
 
 `mach_host_self()`가 만든 send right는 갱신마다 `mach_port_deallocate`로 해제한다. 성공·실패 반환 경로가 늘어나도 누락되지 않도록 host를 얻은 직후 `defer`를 등록한다.
 
-이 세 page count는 RAM Monitor가 V1에서 정의한 시스템 사용량 근사치다. Activity Monitor 내부 회계를 완전히 재현한다는 의미는 아니며, 프로세스별 Physical Footprint와도 정의가 다르다. 그래서 Physical Footprint 차트에는 `System / Unattributed`와 normalization 규칙이 필요하다.
+이 세 page count는 시스템 VM 상태이며 프로세스별 Physical Footprint와 정의가 다르다. 현재 수집 계약은 유지하지만 차트 분모·조각·사용 가능 메모리를 계산하는 데 사용하지 않는다. 두 RAM 모드 모두 측정 그룹 합계를 차트 기준으로 쓰고, 물리 RAM 용량만 별도 요약으로 전달한다.
 
 ## 8. Bundle 해석
 

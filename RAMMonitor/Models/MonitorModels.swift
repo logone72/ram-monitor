@@ -64,8 +64,6 @@ struct ProcessGroup: Identifiable, Sendable {
 enum ChartSliceKind: Equatable, Sendable {
   case group
   case other
-  case available
-  case unattributed
 }
 
 struct ChartSlice: Identifiable, Sendable {
@@ -78,7 +76,6 @@ struct ChartSlice: Identifiable, Sendable {
 struct MemoryChart: Sendable {
   let denominatorBytes: UInt64
   let slices: [ChartSlice]
-  let wasNormalized: Bool
 }
 
 struct SystemMemorySample: Sendable {
@@ -98,6 +95,7 @@ struct MonitorSnapshot: Sendable {
   let metric: MemoryMetric
   let groups: [ProcessGroup]
   let chart: MemoryChart
+  let totalPhysicalBytes: UInt64
   let sampledAt: Date
 }
 

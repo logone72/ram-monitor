@@ -47,6 +47,28 @@ struct MonitorModelTests {
     #expect(restored.sortAscending)
   }
 
+  @Test @MainActor func changingMetricRebuildsTheChartAndKeepsPhysicalRAMSeparate() async throws {
+    let suite = "MonitorModelTests.metricChange"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defaults.removePersistentDomain(forName: suite)
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let model = MonitorModel(defaults: defaults, sample: { makeRawSample() })
+    await model.refresh()
+
+    #expect(model.snapshot?.chart.denominatorBytes == 100)
+    model.settings.memoryMetric = .residentSize
+    #expect(model.snapshot?.chart.denominatorBytes == 200)
+    #expect(model.snapshot?.chart.slices.first?.bytes == 200)
+    #expect(model.visibleGroups.first?.memoryBytes(for: .residentSize) == 200)
+    #expect(model.snapshot?.totalPhysicalBytes == 16_000)
+
+    model.settings.memoryMetric = .physicalFootprint
+    #expect(model.snapshot?.chart.denominatorBytes == 100)
+    #expect(model.snapshot?.chart.slices.first?.bytes == 100)
+    #expect(model.visibleGroups.first?.memoryBytes(for: .physicalFootprint) == 100)
+    #expect(model.snapshot?.totalPhysicalBytes == 16_000)
+  }
+
   @Test @MainActor func failedRefreshKeepsLastSnapshot() async throws {
     let suite = "MonitorModelTests.failure"
     let defaults = try #require(UserDefaults(suiteName: suite))

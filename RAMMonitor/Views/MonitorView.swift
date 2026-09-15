@@ -12,11 +12,15 @@ struct MonitorView: View {
 
       GeometryReader { geometry in
         HStack(spacing: 0) {
-          MemoryPieChart(
-            chart: model.snapshot?.chart ?? emptyChart,
-            metric: model.settings.memoryMetric,
-            useBinaryUnits: model.settings.useBinaryUnits
-          )
+          ScrollView {
+            MemoryPieChart(
+              chart: model.snapshot?.chart ?? emptyChart,
+              metric: model.settings.memoryMetric,
+              totalPhysicalBytes: model.snapshot?.totalPhysicalBytes,
+              useBinaryUnits: model.settings.useBinaryUnits
+            )
+          }
+          .accessibilityIdentifier("memory-summary-scroll")
           .frame(width: max(300, geometry.size.width * 0.36))
 
           Divider()
@@ -32,46 +36,52 @@ struct MonitorView: View {
   }
 
   private var emptyChart: MemoryChart {
-    MemoryChart(denominatorBytes: 0, slices: [], wasNormalized: false)
+    MemoryChart(denominatorBytes: 0, slices: [])
   }
 
   private var workUnitList: some View {
     let visibleGroups = model.visibleGroups
-    return VStack(spacing: 0) {
-      columnHeaders
-      Divider()
-
-      if model.snapshot == nil {
-        ContentUnavailableView("Loading processes", systemImage: "memorychip")
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-      } else if visibleGroups.isEmpty {
-        ContentUnavailableView("No matching work units", systemImage: "magnifyingglass")
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .accessibilityLabel("No matching work units")
-          .accessibilityIdentifier("no-matching-work-units")
-      } else {
-        ScrollView {
-          LazyVStack(spacing: 0) {
-            ForEach(visibleGroups) { group in
-              ProcessGroupRow(
-                group: group,
-                metric: model.settings.memoryMetric,
-                settings: model.settings,
-                isExpanded: model.expandedGroupIDs.contains(group.id),
-                isSelected: selectedGroupID == group.id,
-                onToggle: { toggle(group.id) },
-                onSelect: { selectedGroupID = group.id }
-              )
-            }
+    return ScrollView {
+      LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+        Section {
+          ForEach(visibleGroups) { group in
+            ProcessGroupRow(
+              group: group,
+              metric: model.settings.memoryMetric,
+              settings: model.settings,
+              isExpanded: model.expandedGroupIDs.contains(group.id),
+              isSelected: selectedGroupID == group.id,
+              onToggle: { toggle(group.id) },
+              onSelect: { selectedGroupID = group.id }
+            )
           }
+        } header: {
+          VStack(spacing: 0) {
+            columnHeaders
+            Divider()
+          }
+          .background(.background)
         }
-        .focusable()
-        .onKeyPress(.downArrow) { moveSelection(by: 1) }
-        .onKeyPress(.upArrow) { moveSelection(by: -1) }
-        .onKeyPress(.leftArrow) { collapseSelection() }
-        .onKeyPress(.rightArrow) { expandSelection() }
       }
     }
+    .overlay {
+      Group {
+        if model.snapshot == nil {
+          ContentUnavailableView("Loading processes", systemImage: "memorychip")
+        } else if visibleGroups.isEmpty {
+          ContentUnavailableView("No matching work units", systemImage: "magnifyingglass")
+            .accessibilityLabel("No matching work units")
+            .accessibilityIdentifier("no-matching-work-units")
+        }
+      }
+      .padding(.top, 36)
+      .allowsHitTesting(false)
+    }
+    .focusable()
+    .onKeyPress(.downArrow) { moveSelection(by: 1) }
+    .onKeyPress(.upArrow) { moveSelection(by: -1) }
+    .onKeyPress(.leftArrow) { collapseSelection() }
+    .onKeyPress(.rightArrow) { expandSelection() }
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("work-unit-list")
   }

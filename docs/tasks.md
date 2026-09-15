@@ -6,8 +6,8 @@
 
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
-- 다음 작업: 사용자 직접 테스트와 피드백 반영
-- 마지막 갱신: 2026-09-04
+- 다음 작업: 개선된 로컬 앱 사용자 재확인 및 남은 피드백 수집
+- 마지막 갱신: 2026-09-15
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
 
@@ -39,3 +39,23 @@
 - 최종 `make verify` 통과
 - 사용자 직접 테스트와 피드백 반영 완료
 - 실제 DMG와 Homebrew 설치 흐름 확인
+
+## 2026-09-15 피드백 반영
+
+- [x] 두 RAM 모드의 차트 분모를 측정 그룹 합계로 통일하고 차트 전용 비례 축소 제거
+- [x] 물리 RAM 용량을 별도 표시하고 차트·목록의 동일 작업 바이트 값 일치
+- [x] 헤더와 행을 같은 스크롤 영역에 배치하고 헤더 상단 고정
+- [x] 작은 창에서도 큰 파이 크기를 유지하며 범례·물리 RAM 요약까지 스크롤 가능
+- [x] 회귀 테스트와 `make verify` 통과 — 단위 26개·UI 8개, 포맷·lint·build·Analyze 통과
+- [ ] 사용자 재확인 및 남은 피드백 수집
+
+이번 개선은 Task 9의 배포 전 피드백 반영에 해당한다. 공개 Release·Tap 배포 및 로컬 DMG 재검증은 아직 완료하지 않았다.
+
+검증에서 기존 헤더와 RAM 행의 오른쪽 끝이 16pt 어긋나는 것을 재현했고 수정 후 1pt 이내로 일치했다. 물리 RAM보다 큰 Footprint 합계, 일부 측정 불가·0·overflow, 모드 전환, 스크롤바 설정과 선택 열 표시·숨김, 스크롤 중 헤더 고정, 작은 창의 요약 접근을 검사했다. 실제 앱 화면에서도 원본 바이트 일치와 독립 스크롤을 확인했다.
+
+변경 파일:
+
+- 앱: `RAMMonitor/Models/MonitorModels.swift`, `RAMMonitor/Services/SnapshotBuilder.swift`, `RAMMonitor/Views/MemoryPieChart.swift`, `RAMMonitor/Views/MonitorView.swift`, `RAMMonitor/Views/ProcessGroupRow.swift`
+- 테스트: `RAMMonitorTests/SnapshotBuilderTests.swift`, `RAMMonitorTests/MonitorModelTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`
+- 공개 문서: `README.md`, `README.ko.md` — 기존 변경을 보존하고 측정 방식 설명 갱신
+- 계획·진행 문서: `docs/index.md`, `docs/tasks.md`, `docs/product.md`, `docs/memory.md`, `docs/interface.md`, `docs/system-api.md`, `docs/quality.md`, `docs/implementation.md`

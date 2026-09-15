@@ -10,58 +10,42 @@ RAM Monitor는 서로 연관된 하위 프로세스를 하나의 작업 단위�
 
 - macOS 14 Sonoma 이상
 - Apple Silicon 또는 Intel Mac
-- 개발 시 Xcode 16 이상
-- 개발 도구 설치 또는 Tap 설치 시에만 Homebrew 필요
+- 개발 시 `/Applications/Xcode.app`에 설치된 전체 Xcode 앱 필요 (Xcode 26.6에서 검증)
+- 개발 도구 설치 시 Homebrew 필요
 
 ## 메모리 측정 방식
 
-- **Physical Footprint**가 기본값입니다. 전체 물리 RAM을 파이 차트의 기준으로 사용하며, 사용 가능 메모리와 시스템 또는 분류되지 않은 메모리도 함께 표시합니다.
-- **Resident Size**는 수집된 프로세스의 상주 메모리를 표시합니다. 파이 차트의 기준은 전체 물리 RAM이 아니라 측정된 프로세스 메모리의 합계입니다.
+- **Physical Footprint**가 기본값입니다. 프로세스에 귀속되는 메모리를 표시하며, 압축·스왑된 메모리가 압축 전 크기로 포함될 수 있습니다.
+- **Resident Size**는 수집된 프로세스의 상주 메모리를 표시합니다. 공유 메모리가 여러 프로세스에 중복 집계될 수 있습니다.
 
 메인 목록도 파이 차트에서 선택한 것과 동일한 측정 방식을 사용합니다. 프로세스는 번들 식별자가 있으면 번들 식별자로, 없으면 정확한 실행 파일 경로로 묶습니다.
+
+설정(`⌘,`)에서 측정 방식을 선택할 수 있습니다. 두 모드 모두 측정된 그룹 합계를 파이 차트의 기준으로 사용합니다. 상위 8개 작업과 `Other`는 비례 축소 없이 목록과 같은 바이트 값을 표시합니다. 백분율은 물리 RAM 사용률이 아니라 측정된 프로세스 메모리 안에서 각 작업이 차지하는 비중입니다. 설치된 물리 RAM 용량은 별도로 표시합니다.
+
+검색은 목록만 필터링하며 차트는 전체 측정 그룹을 유지합니다. 합계를 비교할 때는 검색을 해제하고 상위 그룹만 한 번씩 더합니다. 펼쳐진 하위 프로세스를 다시 더하면 중복 집계됩니다. 측정할 수 없는 값은 `—`로 표시하고 합계에서 제외하며, 여러 코어를 사용하면 CPU 사용량은 100%를 넘을 수 있습니다.
 
 ## 빌드 및 실행
 
 로컬 개발에는 유료 Apple Developer 계정이나 서명 인증서가 필요하지 않습니다.
 
 ```bash
-brew bundle
-make bootstrap
-make verify
+make build
 open RAMMonitor.xcodeproj
 ```
 
-Xcode에서 `RAMMonitor` 스킴을 선택해 실행하거나, 명령줄에서 빌드한 앱을 직접 열 수 있습니다.
+명령은 저장소 루트에서 실행합니다. Xcode에서 `RAMMonitor` 스킴과 `My Mac`을 선택한 뒤 `⌘R`을 누르거나, 빌드한 앱을 직접 열 수 있습니다.
 
 ```bash
-make build
 open '.build/DerivedData/Build/Products/Debug/RAM Monitor.app'
 ```
 
-## 설치
+## 배포 상태
 
-GitHub Releases에서 `RAM-Monitor-X.Y.Z.dmg`를 내려받아 열고 **RAM Monitor**를 응용 프로그램 폴더로 드래그합니다.
+첫 공개 배포에 앞서 로컬 테스트와 피드백 반영을 진행하는 단계입니다. DMG 다운로드와 개인 Homebrew Tap 설치를 제공할 예정입니다. 현재 [진행도](docs/tasks.md)를 확인하세요.
 
-릴리스 빌드는 임시 서명되어 있으며 공증되지 않았습니다. 처음 실행할 때 앱을 마우스 오른쪽 버튼으로 클릭해 **열기**를 선택한 다음 다시 **열기**를 확인하세요. **시스템 설정 → 개인정보 보호 및 보안 → 확인 없이 열기**에서도 실행을 허용할 수 있습니다.
+릴리스 빌드는 임시 서명(ad-hoc)되어 있으며 공증되지 않았습니다. 실행 시 **시스템 설정 → 개인정보 보호 및 보안**에서 허용이 필요할 수 있습니다.
 
-개인 Tap을 통한 릴리스가 제공되면 다음 명령으로 설치할 수 있습니다.
-
-```bash
-brew tap logone72/tap
-brew install --cask ram-monitor
-```
-
-## 릴리스 빌드
-
-품질 검사를 먼저 실행한 다음 임시 서명된 Universal 2 릴리스를 빌드합니다.
-
-```bash
-make verify
-./scripts/build-release.sh 0.1.0
-./scripts/build-release.sh --verify-only release/RAM-Monitor-0.1.0.dmg
-```
-
-스크립트는 앱, DMG, `SHA256SUMS`, 체크섬이 포함된 `ram-monitor.rb` Cask 파일을 `release/`에 생성합니다. `vX.Y.Z` 태그를 푸시하면 동일한 검증을 거쳐 릴리스 파일을 게시합니다. 생성된 Cask 파일을 `logone72/homebrew-tap/Casks/ram-monitor.rb`에 복사하면 개인 Tap에서 설치할 수 있습니다.
+Universal 2 DMG 빌드와 게시 방법은 [배포 절차](docs/release.md)를 참고하세요.
 
 ## 개인정보 및 권한
 
@@ -71,7 +55,16 @@ RAM Monitor는 RAM과 CPU 사용량을 계산하는 데 필요한 로컬 프로�
 
 ## 개발
 
+Homebrew가 설치된 환경에서 SwiftLint와 Git hook을 준비한 뒤 전체 검사를 실행합니다.
+
+```bash
+make bootstrap
+make verify
+```
+
 `make verify`는 전체 품질 검사 명령입니다. swift-format, SwiftLint, 공백 검사, 빌드, 코드 커버리지를 포함한 단위 및 UI 테스트, Xcode Analyze를 실행합니다. Git hook은 커밋 전에 포맷과 린트 검사를 실행하며 Conventional Commits 접두사를 검사합니다.
+
+포맷 적용에는 `make format`을 사용합니다. Hook은 파일을 자동 수정하지 않습니다. 사양, 구조, 개발 계획은 [docs/index.md](docs/index.md)에 정리되어 있습니다.
 
 ## 라이선스
 

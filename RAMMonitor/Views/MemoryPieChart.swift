@@ -4,12 +4,16 @@ import SwiftUI
 struct MemoryPieChart: View {
   let chart: MemoryChart
   let metric: MemoryMetric
+  let totalPhysicalBytes: UInt64?
   let useBinaryUnits: Bool
 
   @State private var hoveredSliceID: String?
 
   var body: some View {
     VStack(spacing: 18) {
+      Text(metric == .physicalFootprint ? "Physical Footprint" : "Resident Size")
+        .font(.headline)
+
       ZStack {
         Chart(Array(chart.slices.enumerated()), id: \.element.id) { index, slice in
           SectorMark(
@@ -51,7 +55,7 @@ struct MemoryPieChart: View {
               .font(.caption)
               .foregroundStyle(.secondary)
           } else {
-            Text(metric == .physicalFootprint ? "Physical RAM" : "Measured process total")
+            Text("Measured process total")
               .font(.caption)
               .foregroundStyle(.secondary)
             Text(ByteText.string(chart.denominatorBytes, binary: useBinaryUnits))
@@ -82,11 +86,21 @@ struct MemoryPieChart: View {
       }
       .frame(maxWidth: 240)
 
-      if chart.wasNormalized {
-        Text("Process values normalized to system memory")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
+      VStack(spacing: 7) {
+        Divider()
+        LabeledContent(
+          "Physical RAM", value: ByteText.string(totalPhysicalBytes, binary: useBinaryUnits)
+        )
+        .font(.caption)
+        .accessibilityIdentifier("physical-ram-summary")
+        Text(
+          "Percentages show each work unit’s share of measured process memory, not physical RAM usage."
+        )
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
       }
+      .frame(maxWidth: 240)
     }
     .padding(24)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -129,8 +143,6 @@ struct MemoryPieChart: View {
 
   private func color(for slice: ChartSlice, at index: Int) -> Color {
     switch slice.kind {
-    case .available: .gray.opacity(0.25)
-    case .unattributed: .gray.opacity(0.65)
     case .other: .secondary
     case .group: Self.groupColors[index % Self.groupColors.count]
     }

@@ -43,40 +43,23 @@ struct ProcessSample: Identifiable, Hashable, Sendable {
 
 ## Physical Footprint 모드
 
-기본 모드다. 목록과 그룹 합계는 Physical Footprint를 사용하고, 파이 차트 분모는 전체 물리 RAM이다.
+기본 모드다. 목록과 그룹 합계는 Physical Footprint를 사용하며, 파이 차트 분모는 측정된 그룹의 Physical Footprint 합계다.
 
-파이 차트는 다음 순서로 만든다.
-
-1. 그룹을 Physical Footprint 내림차순으로 정렬한다.
-2. 상위 8개를 독립 조각으로 만든다.
-3. 나머지 측정 그룹을 `Other`로 합친다.
-4. `available = totalPhysical - min(active + wired + compressed, totalPhysical)`로 계산한다.
-5. `System / Unattributed`는 전체 물리 RAM에서 프로세스 조각과 Available을 뺀 나머지다.
-6. 서로 다른 커널 통계의 시점·회계 방식 때문에 합이 물리 RAM을 넘으면, **차트 조각만** 시스템 사용량 범위로 비례 축소한다. 목록의 수집 바이트 값은 유지한다.
-7. 측정 그룹 합계가 `UInt64` 범위를 넘으면 프로세스 조각을 숨기고 `System / Unattributed`와 `Available`만으로 전체 물리 RAM을 보존한다.
-
-```swift
-let systemUsed = min(active + wired + compressed, totalPhysical)
-let available = totalPhysical - systemUsed
-let measured = groups.compactMap(\.totalPhysicalFootprintBytes).reduce(0, +)
-let chartScale = measured > systemUsed && measured > 0
-  ? Double(systemUsed) / Double(measured)
-  : 1
-let unattributed = systemUsed - min(systemUsed, measured)
-```
-
-차트 조각의 합은 항상 `totalPhysical`과 같아야 한다. 비례 축소가 발생한 경우 차트 하단에 `Process totals normalized for chart`를 작게 표시한다.
+Physical Footprint에는 압축·스왑된 메모리의 압축 전 크기가 포함될 수 있다. 물리 RAM 용량을 넘더라도 원본 수치를 유지한다. 물리 RAM의 서로 겹치지 않는 구성 조각으로 해석하지 않는다. [Apple 메모리 설명](https://developer.apple.com/documentation/xcode/analyzing-the-memory-usage-of-your-metal-app)
 
 ## Resident Size 모드
 
-Resident Size는 실제 물리 RAM 전체의 구성으로 해석하지 않는다.
+목록과 그룹 합계는 Resident Size를 사용하며, 파이 차트 분모는 측정된 그룹의 Resident Size 합계다. 공유 메모리가 여러 프로세스에 중복 집계될 수 있으므로 실제 물리 RAM 전체의 구성으로 해석하지 않는다.
 
-- 목록, 그룹 합계, 백분율, 정렬은 Resident Size를 사용한다.
-- 파이 차트 분모는 `측정된 모든 프로세스 Resident Size의 합`이다.
-- 조각은 상위 8개와 `Other`만 사용한다.
-- `Available`과 `System / Unattributed`는 표시하지 않는다.
-- 중앙 라벨은 `Measured process total`로 표시한다.
-- 측정 그룹 합계가 `UInt64` 범위를 넘으면 잘못된 비율을 만들지 않고 분모 `0`, 빈 차트로 처리한다.
+## 두 모드의 공통 차트 규칙
+
+1. 선택한 측정값으로 그룹을 내림차순 정렬하고 상위 8개와 나머지 합계 `Other`를 표시한다.
+2. 분모는 같은 snapshot의 측정 가능한 그룹 합계다. 조각의 바이트 값은 목록의 그룹 합계와 동일하며 비례 축소하지 않는다.
+3. 백분율은 `조각 바이트 / 측정된 그룹 합계 × 100`이다. 이는 측정된 프로세스 메모리 안에서의 비중이며 물리 RAM 사용률이 아니다.
+4. `Available`이나 `System / Unattributed` 조각을 만들지 않고 시스템 VM 통계와 프로세스 합계를 섞지 않는다.
+5. 물리 RAM 용량은 snapshot의 별도 `totalPhysicalBytes`로 전달해 `Physical RAM` 요약에 표시한다. 차트 중앙은 두 모드 모두 `Measured process total`이다.
+6. 측정 가능한 값이 없거나 합계가 0 또는 `UInt64` 범위를 넘으면 분모 `0`, 빈 차트로 처리한다. 일부 값이 `nil`이면 측정 가능한 값만 합산한다.
+7. 검색은 목록만 필터링한다. 차트는 전체 측정 그룹을 유지하며, 비교할 때는 검색을 해제한 상위 그룹 행의 합계를 사용한다. 펼쳐진 subprocess 값을 상위 그룹과 중복해서 더하지 않는다.
 
 ## 모드 전환 불변 조건
 

@@ -9,11 +9,13 @@ enum SnapshotBuilder {
     let groups = makeGroups(from: raw.processes, metric: metric)
     let chart = makeChart(
       groups: groups,
-      systemMemory: raw.systemMemory,
       metric: metric,
       topSliceCount: max(0, topSliceCount)
     )
-    return MonitorSnapshot(metric: metric, groups: groups, chart: chart, sampledAt: raw.sampledAt)
+    return MonitorSnapshot(
+      metric: metric, groups: groups, chart: chart,
+      totalPhysicalBytes: raw.systemMemory.totalPhysicalBytes, sampledAt: raw.sampledAt
+    )
   }
 
   private static func makeGroups(
@@ -53,7 +55,6 @@ enum SnapshotBuilder {
 
   private static func makeChart(
     groups: [ProcessGroup],
-    systemMemory: SystemMemorySample,
     metric: MemoryMetric,
     topSliceCount: Int
   ) -> MemoryChart {
@@ -61,60 +62,13 @@ enum SnapshotBuilder {
       group.memoryBytes(for: metric).map { (group, $0) }
     }
 
-    switch metric {
-    case .residentSize:
-      guard let measured = sum(measuredGroups.map(\.1)) else {
-        return MemoryChart(denominatorBytes: 0, slices: [], wasNormalized: false)
-      }
-      return MemoryChart(
-        denominatorBytes: measured,
-        slices: makeProcessSlices(from: measuredGroups, topSliceCount: topSliceCount),
-        wasNormalized: false
-      )
-    case .physicalFootprint:
-      let total = systemMemory.totalPhysicalBytes
-      let systemUsed = cappedSum(
-        [systemMemory.activeBytes, systemMemory.wiredBytes, systemMemory.compressedBytes],
-        at: total
-      )
-      let available = total - systemUsed
-      guard let measured = sum(measuredGroups.map(\.1)) else {
-        return MemoryChart(
-          denominatorBytes: total,
-          slices: systemSlices(unattributed: systemUsed, available: available),
-          wasNormalized: true
-        )
-      }
-      let processSlices = makeProcessSlices(from: measuredGroups, topSliceCount: topSliceCount)
-      let wasNormalized = measured > systemUsed
-      let visibleProcessSlices =
-        wasNormalized
-        ? scaled(processSlices, from: measured, to: systemUsed)
-        : processSlices
-      let visibleMeasured = wasNormalized ? systemUsed : measured
-      var slices = visibleProcessSlices
-      let unattributed = systemUsed - min(systemUsed, visibleMeasured)
-      slices += systemSlices(unattributed: unattributed, available: available)
-      return MemoryChart(
-        denominatorBytes: total,
-        slices: slices,
-        wasNormalized: wasNormalized
-      )
+    guard let measured = sum(measuredGroups.map(\.1)), measured > 0 else {
+      return MemoryChart(denominatorBytes: 0, slices: [])
     }
-  }
-
-  private static func systemSlices(unattributed: UInt64, available: UInt64) -> [ChartSlice] {
-    [
-      unattributed > 0
-        ? ChartSlice(
-          id: "unattributed",
-          label: "System / Unattributed",
-          bytes: unattributed,
-          kind: .unattributed
-        ) : nil,
-      available > 0
-        ? ChartSlice(id: "available", label: "Available", bytes: available, kind: .available) : nil,
-    ].compactMap { $0 }
+    return MemoryChart(
+      denominatorBytes: measured,
+      slices: makeProcessSlices(from: measuredGroups, topSliceCount: topSliceCount)
+    )
   }
 
   private static func makeProcessSlices(
@@ -129,28 +83,6 @@ enum SnapshotBuilder {
       slices.append(ChartSlice(id: "other", label: "Other", bytes: otherBytes, kind: .other))
     }
     return slices
-  }
-
-  private static func scaled(
-    _ slices: [ChartSlice],
-    from sourceTotal: UInt64,
-    to targetTotal: UInt64
-  ) -> [ChartSlice] {
-    guard sourceTotal > 0, !slices.isEmpty else { return slices }
-    var remainingSource = sourceTotal
-    var remainingTarget = targetTotal
-    return slices.map { slice in
-      let bytes: UInt64
-      if slice.id == slices.last?.id {
-        bytes = remainingTarget
-      } else {
-        let ratio = Double(slice.bytes) / Double(remainingSource)
-        bytes = min(remainingTarget, UInt64((Double(remainingTarget) * ratio).rounded(.down)))
-      }
-      remainingSource -= slice.bytes
-      remainingTarget -= bytes
-      return ChartSlice(id: slice.id, label: slice.label, bytes: bytes, kind: slice.kind)
-    }
   }
 
   private static func sum(_ values: [UInt64]) -> UInt64? {
@@ -181,11 +113,6 @@ enum SnapshotBuilder {
     return total
   }
 
-  private static func cappedSum(_ values: [UInt64], at cap: UInt64) -> UInt64 {
-    values.reduce(0) { total, value in
-      total >= cap || value >= cap - total ? cap : total + value
-    }
-  }
 }
 
 extension MonitorSnapshot {

@@ -6,7 +6,7 @@ import Testing
 
 @Suite("SnapshotBuilder")
 struct SnapshotBuilderTests {
-  @Test func physicalChartAlwaysMatchesPhysicalRAM() {
+  @Test func physicalChartUsesMeasuredTotalAndKeepsPhysicalRAMSeparate() {
     let raw = Fixtures.raw(
       physicalRAM: 16_000,
       systemUsed: 12_000,
@@ -18,14 +18,16 @@ struct SnapshotBuilderTests {
 
     let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
 
-    #expect(result.chart.denominatorBytes == 16_000)
-    #expect(result.chart.slices.reduce(0) { $0 + $1.bytes } == 16_000)
-    #expect(result.chart.slices.contains { $0.kind == .available && $0.bytes == 4_000 })
+    #expect(result.chart.denominatorBytes == 8_000)
+    #expect(result.chart.slices.reduce(0) { $0 + $1.bytes } == 8_000)
+    #expect(result.chart.slices.count == 2)
+    #expect(result.totalPhysicalBytes == 16_000)
   }
 
-  @Test func physicalChartNormalizesProcessSlicesWithoutChangingListValues() {
+  @Test(arguments: [UInt64(600), 1_000])
+  func physicalChartKeepsTheSameValuesAsTheList(physicalRAM: UInt64) {
     let raw = Fixtures.raw(
-      physicalRAM: 1_000,
+      physicalRAM: physicalRAM,
       systemUsed: 600,
       processes: [
         .sample(id: 1, group: "browser", footprint: 500),
@@ -35,20 +37,23 @@ struct SnapshotBuilderTests {
 
     let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
 
-    #expect(result.chart.wasNormalized)
+    #expect(result.chart.denominatorBytes == 900)
+    #expect(result.chart.slices.first { $0.id == "group:browser" }?.bytes == 500)
+    #expect(result.chart.slices.first { $0.id == "group:editor" }?.bytes == 400)
     #expect(result.groups.compactMap { $0.totalPhysicalFootprintBytes }.reduce(0, +) == 900)
-    #expect(checkedSum(result.chart.slices.map(\.bytes)) == 1_000)
+    #expect(checkedSum(result.chart.slices.map(\.bytes)) == 900)
   }
 
-  @Test func residentChartUsesMeasuredProcessTotal() {
+  @Test(arguments: MemoryMetric.allCases)
+  func chartUsesMeasuredProcessTotalWithTopEightAndOther(metric: MemoryMetric) {
     let raw = Fixtures.rawWithTenGroups(residentBytesPerGroup: 100)
-    let result = SnapshotBuilder.build(raw: raw, metric: .residentSize, topSliceCount: 8)
+    let result = SnapshotBuilder.build(raw: raw, metric: metric, topSliceCount: 8)
 
     #expect(result.chart.denominatorBytes == 1_000)
     #expect(result.chart.slices.filter { $0.kind == .group }.count == 8)
     #expect(result.chart.slices.first { $0.kind == .other }?.bytes == 200)
-    #expect(!result.chart.slices.contains { $0.kind == .available })
-    #expect(!result.chart.slices.contains { $0.kind == .unattributed })
+    #expect(result.chart.slices.count == 9)
+    #expect(checkedSum(result.chart.slices.map(\.bytes)) == 1_000)
   }
 
   @Test func groupAggregationSkipsMissingValuesAndRejectsOverflow() throws {
@@ -85,9 +90,40 @@ struct SnapshotBuilderTests {
     let physical = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
     let resident = SnapshotBuilder.build(raw: raw, metric: .residentSize)
 
-    #expect(checkedSum(physical.chart.slices.map(\.bytes)) == physical.chart.denominatorBytes)
+    #expect(physical.chart.denominatorBytes == 0)
+    #expect(physical.chart.slices.isEmpty)
     #expect(resident.chart.denominatorBytes == 0)
     #expect(resident.chart.slices.isEmpty)
+  }
+
+  @Test(arguments: MemoryMetric.allCases)
+  func emptyZeroAndUnavailableMeasurementsHaveNoSlices(metric: MemoryMetric) {
+    let inputs: [[ProcessSample]] = [
+      [],
+      [.sample(id: 1, footprint: nil, resident: nil)],
+      [.sample(id: 1, footprint: 0, resident: 0)],
+    ]
+    for processes in inputs {
+      let result = SnapshotBuilder.build(raw: Fixtures.raw(processes: processes), metric: metric)
+      #expect(result.chart.denominatorBytes == 0)
+      #expect(result.chart.slices.isEmpty)
+      #expect(result.totalPhysicalBytes == 16_000)
+    }
+  }
+
+  @Test(arguments: MemoryMetric.allCases)
+  func chartExcludesMissingReadingsWithoutScalingMeasuredValues(metric: MemoryMetric) {
+    let result = SnapshotBuilder.build(
+      raw: Fixtures.raw(processes: [
+        .sample(id: 1, group: "partial", footprint: 7, resident: 7),
+        .sample(id: 2, group: "partial", footprint: nil, resident: nil),
+        .sample(id: 3, group: "missing", footprint: nil, resident: nil),
+      ]), metric: metric
+    )
+    #expect(result.chart.denominatorBytes == 7)
+    #expect(result.chart.slices.count == 1)
+    #expect(result.chart.slices.first?.bytes == 7)
+    #expect(result.groups.first?.memoryBytes(for: metric) == 7)
   }
 
   @Test func groupsByBundleIDAndFallsBackToPath() {

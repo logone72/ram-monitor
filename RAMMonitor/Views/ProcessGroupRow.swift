@@ -108,6 +108,7 @@ struct ProcessGroupRow: View {
       Text(ByteText.string(values.memoryBytes, binary: settings.useBinaryUnits))
         .frame(width: 90, alignment: .trailing)
         .monospacedDigit()
+        .accessibilityIdentifier("work-unit-ram-value")
       Text(percent(values.cpuPercent))
         .frame(width: 64, alignment: .trailing)
         .monospacedDigit()

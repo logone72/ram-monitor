@@ -383,7 +383,7 @@ import Testing
 
 @Suite("SnapshotBuilder")
 struct SnapshotBuilderTests {
-  @Test func physicalChartAlwaysMatchesPhysicalRAM() throws {
+  @Test func physicalChartUsesMeasuredTotalAndKeepsPhysicalRAMSeparate() throws {
     let raw = Fixtures.raw(
       physicalRAM: 16_000,
       systemUsed: 12_000,
@@ -395,9 +395,9 @@ struct SnapshotBuilderTests {
 
     let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
 
-    #expect(result.chart.denominatorBytes == 16_000)
-    #expect(result.chart.slices.reduce(0) { $0 + $1.bytes } == 16_000)
-    #expect(result.chart.slices.contains { $0.kind == .available && $0.bytes == 4_000 })
+    #expect(result.chart.denominatorBytes == 8_000)
+    #expect(result.chart.slices.reduce(0) { $0 + $1.bytes } == 8_000)
+    #expect(result.totalPhysicalBytes == 16_000)
   }
 }
 ```
@@ -413,8 +413,7 @@ extension SnapshotBuilderTests {
     #expect(result.chart.denominatorBytes == 1_000)
     #expect(result.chart.slices.filter { $0.kind == .group }.count == 8)
     #expect(result.chart.slices.first { $0.kind == .other }?.bytes == 200)
-    #expect(!result.chart.slices.contains { $0.kind == .available })
-    #expect(!result.chart.slices.contains { $0.kind == .unattributed })
+    #expect(result.chart.slices.count == 9)
   }
 }
 ```
@@ -484,8 +483,6 @@ struct ProcessGroup: Identifiable, Sendable {
 enum ChartSliceKind: Equatable, Sendable {
   case group
   case other
-  case available
-  case unattributed
 }
 
 struct ChartSlice: Identifiable, Sendable {
@@ -498,7 +495,6 @@ struct ChartSlice: Identifiable, Sendable {
 struct MemoryChart: Sendable {
   let denominatorBytes: UInt64
   let slices: [ChartSlice]
-  let wasNormalized: Bool
 }
 
 struct SystemMemorySample: Sendable {
@@ -518,6 +514,7 @@ struct MonitorSnapshot: Sendable {
   let metric: MemoryMetric
   let groups: [ProcessGroup]
   let chart: MemoryChart
+  let totalPhysicalBytes: UInt64
   let sampledAt: Date
 }
 
@@ -560,7 +557,7 @@ extension ProcessSample {
 }
 ```
 
-Physical Footprint의 chart-only normalization, Resident Size 분모, 상위 8개와 Other, `nil` 집계와 overflow 처리를 [`memory.md`](memory.md) 그대로 구현한다.
+두 모드 모두 선택한 측정 그룹 합계를 분모로 사용한다. 상위 8개와 Other, 원본 바이트 보존, `nil`·0·overflow 처리를 [`memory.md`](memory.md)대로 구현한다. 물리 RAM 용량은 차트와 별도로 snapshot에 전달한다.
 
 같은 테스트 파일에만 쓰는 fixture는 아래 표면으로 정의한다. `group`이 있으면 같은 문자열을 ID와 표시 이름으로 갖는 `BundleIdentity`를 만들고, `systemUsed`는 `activeBytes`에 넣으며 wired와 compressed는 0으로 둔다.
 
@@ -1017,11 +1014,13 @@ Chart(chart.slices) { slice in
 .accessibilityIdentifier("memory-pie-chart")
 ```
 
-중앙 분모, top 8 범례, Other, 모드별 시스템 조각, hover 정보를 [`interface.md`](interface.md)대로 표시한다.
+중앙 측정 합계, top 8 범례, Other, 별도 물리 RAM 용량과 hover 정보를 [`interface.md`](interface.md)대로 표시한다.
 
 - [x] **Step 5: 그룹과 subprocess 행 구현**
 
 CPU와 RAM을 항상 표시한다. Threads, PID, Processes, Architecture는 설정에 따라 표시한다.
+
+헤더와 행은 같은 스크롤 영역을 사용하고 Section 헤더를 상단에 고정한다. 항상 표시/자동 숨김 스크롤바에서 열 정렬과 헤더 고정을 검증한다.
 
 - [x] **Step 6: 검색·열 정렬·키보드 동작 연결**
 
