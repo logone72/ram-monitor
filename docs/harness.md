@@ -21,6 +21,10 @@
 
 저장소의 Xcode 명령은 시스템 `xcode-select` 상태에 의존하지 않는다. `Makefile`이 기본 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`를 export하고, 다른 Xcode를 사용할 때만 호출자가 이 값을 덮어쓴다. `doctor`와 CI 로그에 실제 Xcode 버전을 남긴다.
 
+CI와 Release는 `macos-26` 러너의 `/Applications/Xcode_26.6.app/Contents/Developer`를 명시해 같은 toolchain을 사용한다. 러너 기본 Xcode 경로에 의존하지 않는다. Xcode 16.4 SDK에는 수집에 사용하는 `proc_archinfo`·`PROC_PIDARCHINFO`가 없으므로 `doctor`가 SDK 버전을 출력하고 두 선언의 Swift import를 빌드 전에 검사한다. 빌드 환경과 앱 실행 최소 버전은 별개이며 deployment target은 macOS 14를 유지한다.
+
+러너의 Xcode·SDK 조합은 [GitHub 공식 이미지 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md#xcode)에서 확인한다. 고정 버전을 변경할 때는 CI와 Release를 함께 갱신하고 `doctor`와 전체 검증을 다시 실행한다.
+
 ## 관리 파일
 
 ```text
@@ -70,7 +74,7 @@ make verify
 명령의 책임은 다음과 같다.
 
 - `bootstrap`: `Brewfile` 설치, `core.hooksPath=.githooks` 설정, hook 실행 권한 설정
-- `doctor`: Xcode, Swift, swift-format, SwiftLint 사용 가능 여부와 버전 출력
+- `doctor`: Xcode, Swift, swift-format, SwiftLint 사용 가능 여부·버전 출력과 필수 SDK 선언 import 검사
 - `format`: Swift 소스 포맷 적용
 - `format-check`: 포맷 차이 검사
 - `lint`: SwiftLint 경고를 실패로 처리
@@ -98,7 +102,7 @@ make verify
 `.github/workflows/ci.yml`은 `pull_request`와 `main` push에서 실행한다.
 
 1. 저장소 checkout
-2. `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` 설정
+2. `macos-26`에서 `DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer` 설정
 3. `brew bundle --file=Brewfile`
 4. `make verify`
 

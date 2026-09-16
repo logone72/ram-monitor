@@ -6,7 +6,7 @@
 
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
-- 다음 작업: 0.1.0 DMG 설치본 사용자 최종 확인 → 별도 승인 후 공개 Release·Tap 배포
+- 다음 작업: CI SDK 환경 수정본의 원격 재검증 → 0.1.0 DMG 설치본 사용자 최종 확인 → 별도 승인 후 공개 Release·Tap 배포
 - 마지막 갱신: 2026-09-16
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
@@ -163,3 +163,13 @@ Git 태그·공개 Release·Tap 게시는 수행하지 않았다. cask URL은 �
 이미지 제작: built-in `image_gen`. 최종 편집 프롬프트 요약:
 
 > Refine only the corners of the three-piece R logo. Lightly ease exposed corners and the blue bowl-to-leg junction; retain the long, thick diagonal leg with a mostly straight terminal. Keep the smooth circular arcs, small central opening, blue/indigo, green/teal and yellow/orange gradients, flat design and solid white background. Avoid razor-sharp tips, pill-shaped ends, extra details, text, outlines, 3D and shadows.
+
+## 2026-09-16 CI SDK 환경 수정
+
+- 원격 CI `35081134757`은 기본 Xcode 16.4 / macOS 15.5 SDK에서 `proc_archinfo`와 `PROC_PIDARCHINFO`를 찾지 못해 빌드 단계에서 실패했다. 앞서 기록한 로컬 검증 통과와 원격 CI 성공은 별개다.
+- 구형 macOS 14.4 SDK에서도 같은 Swift import 오류를 재현했고, macOS 26.5 SDK에서는 arm64·x86_64 모두 통과했다. 캐시가 아닌 SDK 선언 차이로 확인했다.
+- CI·Release를 `macos-26` + Xcode 26.6으로 고정했다. Release 트리거·게시 방식과 앱 소스·macOS 14 deployment target은 변경하지 않았다.
+- `make doctor`에 SDK 버전 출력과 필수 선언의 Swift typecheck를 추가했다. 로컬 `make doctor check`, 두 workflow의 YAML·환경 일치 검사, 설치된 Xcode 27 SDK의 arm64·x86_64 앱 빌드가 통과했다.
+- 로컬 Xcode 27에서 외부 CLT 26.5 SDK를 사용하는 전체 앱 빌드는 SDK 등록 조회 오류로 완료하지 못했다. 해당 SDK의 import 검사와 Xcode 26.6 자체에서의 전체 검증을 동일하게 취급하지 않는다.
+- GitHub Actions의 새 환경 전체 검증은 push 후 확인해야 한다. 로컬 UI 테스트와 배포는 실행하지 않았다. 시스템 `xcode-select`는 CLT를 유지했다.
+- 변경 파일: `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `Makefile`, `docs/harness.md`, `docs/index.md`, `docs/tasks.md`.

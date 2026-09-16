@@ -21,6 +21,8 @@ doctor:
 	xcrun swift --version
 	xcrun swift-format --version
 	swiftlint version
+	xcrun --sdk macosx --show-sdk-version
+	printf 'import Darwin\nlet _ = (proc_archinfo(), PROC_PIDARCHINFO)\n' | xcrun --sdk macosx swiftc -typecheck -
 
 format:
 	xcrun swift-format format --configuration .swift-format --recursive --parallel --in-place $(SWIFT_PATHS)
