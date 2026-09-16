@@ -77,7 +77,7 @@ final class RAMMonitorUITests: XCTestCase {
     XCTAssertEqual(center.label, "Measured process total")
     app.buttons["Sort by RAM"].hover()
     legend.hover()
-    XCTAssertEqual(center.label, legend.label, "Hover must resume after leaving the cleared item")
+    assertLabel(center, equals: legend.label)
     XCTAssertFalse(legend.isSelected, "Hover must not select a row")
   }
 
@@ -114,7 +114,7 @@ final class RAMMonitorUITests: XCTestCase {
     XCTAssertEqual(center.label, "Measured process total")
     app.buttons["Sort by RAM"].hover()
     other.hover()
-    XCTAssertEqual(center.label, "Other")
+    assertLabel(center, equals: "Other")
     other.click()
     XCTAssertEqual(center.label, "Measured process total", "Other hover alone must also clear")
 
@@ -212,10 +212,10 @@ final class RAMMonitorUITests: XCTestCase {
     XCTAssertEqual(activeLabel.label, first.label)
 
     second.hover()
-    XCTAssertEqual(activeLabel.label, second.label)
+    assertLabel(activeLabel, equals: second.label)
     XCTAssertTrue(row.isSelected, "Hover must not change list selection")
     app.buttons["Sort by RAM"].hover()
-    XCTAssertEqual(activeLabel.label, first.label, "Leaving hover restores the selected slice")
+    assertLabel(activeLabel, equals: first.label)
     XCTAssertTrue(first.isSelected)
     first.hover()
     app.typeKey(.downArrow, modifierFlags: [])
@@ -230,6 +230,19 @@ final class RAMMonitorUITests: XCTestCase {
     app.typeKey(.downArrow, modifierFlags: [])
     XCTAssertEqual(
       activeLabel.label, "Other", "Selection within Other must also replace stale hover")
+  }
+
+  @MainActor
+  private func assertLabel(
+    _ element: XCUIElement, equals expected: String,
+    file: StaticString = #filePath, line: UInt = #line
+  ) {
+    // Hover events and their accessibility updates can arrive after XCTest reports idle.
+    let updated = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "label == %@", expected), object: element)
+    XCTAssertEqual(
+      XCTWaiter.wait(for: [updated], timeout: 3), .completed,
+      "Expected label: \(expected); actual: \(element.label)", file: file, line: line)
   }
 
   @MainActor

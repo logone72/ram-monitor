@@ -7,7 +7,7 @@
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
 - 다음 작업: 개선된 로컬 앱 사용자 재확인 및 남은 피드백 수집
-- 마지막 갱신: 2026-09-15
+- 마지막 갱신: 2026-09-16
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
 
@@ -89,9 +89,9 @@
 - [x] 목록의 포커스 효과만 비활성화하고 중립색 구분선·행 선택 표시·방향키 이동 유지
 - [x] 수정 전 픽셀 검사 실패 → 수정 후 통과, 실제 선택 화면에서도 테두리 제거 확인
 - [x] 최종 수정본의 테두리·방향키 검사, 포맷·lint·빌드·Analyze 통과
-- [ ] 전체 `make verify`: 기존 호버 UI 검사 실패로 미통과. 이번 수정 제외 후 비교 실행에서도 같은 실패를 확인했다.
+- [x] 전체 `make verify`: 2026-09-16 호버 검사 동기화 보완 후 통과. 아래 재검증 기록 참고.
 
-단위 28개와 테두리 픽셀·방향키 검사는 통과했다. 전체 UI 검사에서 클릭 위치 탐색·호버 실패가 발생했고, 빈 목록 클릭은 재실행에서 통과했다. 기존 호버 검사의 `Google Chrome`/`ChatGPT` 불일치는 포커스 테두리 수정 전 코드에서도 재현되어 별도 확인이 필요하다.
+당시 단위 28개와 테두리 픽셀·방향키 검사는 통과했다. 전체 UI 검사에서 클릭 위치 탐색·호버 실패가 발생했고, 빈 목록 클릭은 재실행에서 통과했다. 기존 호버 검사의 `Google Chrome`/`ChatGPT` 불일치는 포커스 테두리 수정 전 코드에서도 재현됐으며, 아래 재검증에서 검사 방식과 실행 환경을 확인했다.
 
 변경 파일: `RAMMonitor/Views/MonitorView.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/interface.md`, `docs/tasks.md`.
 
@@ -104,6 +104,17 @@
 - [x] 단위 30개·관련 UI 6개, 포맷·lint·빌드·Analyze 통과. 전체 UI 재검증은 아니며 기존 호버 검사 실패는 앞 항목에 별도 기록되어 있다.
 
 변경 파일: `RAMMonitor/RAMMonitorApp.swift`, `RAMMonitor/Views/MonitorView.swift`, `RAMMonitor/Views/SummaryScrollConfiguration.swift`, `RAMMonitorTests/MemoryLayoutTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/interface.md`, `docs/tasks.md`.
+
+## 2026-09-16 UI 검사 안정화 및 전체 재검증
+
+- [x] 호버 직후 즉시 label을 비교하던 네 곳을 최대 3초의 조건부 대기로 변경. 입력 재시도·검사 생략 없이 기대 항목명을 검증한다.
+- [x] 실패 녹화에서 뒤늦게 정상 강조가 표시되는 사례 확인. 별도 실행에서는 시스템 권한 팝업과 다른 앱 창의 입력 방해 기록을 확인했다.
+- [x] 최종 `make verify` 통과 — 단위 30개·UI 15개, 포맷·lint·build·Analyze 성공 (Xcode 27.0).
+- [x] 임시 진단 코드 제거. 앱 동작 코드는 변경하지 않음.
+
+중간 반복 검사 15회 중 1회는 외부 창 개입과 함께 실패했으므로 반복 검사를 전부 통과한 것으로 기록하지 않는다. 이후 최종 전체 검증은 실패 없이 완료됐다. 모든 과거 실패가 동일 원인이었다고 단정하지 않으며, 재발 시 입력 방해와 실제 앱 회귀를 구분한다.
+
+변경 파일: `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`. 로컬 DMG 설치 검증과 공개 배포는 여전히 Task 9의 남은 작업이다.
 
 ### 이전 차트 회계·헤더 검증 기록
 

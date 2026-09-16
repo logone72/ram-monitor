@@ -36,6 +36,8 @@ make verify
 make test
 ```
 
+UI 검사는 잠금 해제된 화면에서 다른 마우스·키보드 입력 없이 실행한다. 시스템 권한 팝업이 개입하면 해당 실행은 앱 회귀 판정에 사용하지 않고, 사용자가 팝업을 처리한 뒤 다시 검증한다. 호버 뒤에는 접근성 label이 기대값으로 반영될 때까지 최대 3초 기다린다. 입력 재시도나 실패 무시는 하지 않는다.
+
 `ProcessSampler` 구현 전에는 [`system-api.md`](system-api.md)의 SDK import probe를 실행한다. `PROC_PIDPATHINFO_MAXSIZE`와 `HOST_VM_INFO64_COUNT`는 Swift에 import되지 않는다는 전제를 실제 활성 Xcode SDK에서 확인하고, 숫자를 하드코딩하지 않는다.
 
 ## 수동 비교
