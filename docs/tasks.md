@@ -6,7 +6,7 @@
 
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
-- 다음 작업: 개선된 로컬 앱 사용자 재확인 및 남은 피드백 수집
+- 다음 작업: 0.1.0 DMG 설치본 사용자 최종 확인 → 별도 승인 후 공개 Release·Tap 배포
 - 마지막 갱신: 2026-09-16
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
@@ -27,9 +27,10 @@
 
 ## Task 9 배포 전 게이트
 
-- [ ] 사용자가 로컬 앱을 직접 실행하고 주요 동작을 확인한다.
-- [ ] 확인된 피드백을 반영한다.
-- [ ] 변경 후 `make verify`와 로컬 DMG 검증을 다시 통과한다.
+- [x] 사용자가 로컬 앱을 직접 실행하고 주요 동작을 확인한다.
+- [x] 확인된 피드백을 반영한다.
+- [x] 변경 후 `make verify`와 로컬 DMG 검증을 다시 통과한다.
+- [ ] 생성된 DMG 설치본을 사용자가 최종 확인한다.
 - [ ] 위 단계가 끝난 뒤 공개 GitHub Release와 personal Tap 배포를 진행한다.
 
 ## 전체 완료 조건
@@ -47,9 +48,9 @@
 - [x] 헤더와 행을 같은 스크롤 영역에 배치하고 헤더 상단 고정
 - [x] 작은 창에서도 큰 파이 크기를 유지하며 범례·물리 RAM 요약까지 스크롤 가능
 - [x] 회귀 테스트와 `make verify` 통과 — 단위 26개·UI 8개, 포맷·lint·build·Analyze 통과
-- [ ] 사용자 재확인 및 남은 피드백 수집
+- [x] 사용자 재확인 및 후속 피드백 반영 — 선택 해제·테두리·스크롤·초기 창 높이 개선
 
-이번 개선은 Task 9의 배포 전 피드백 반영에 해당한다. 공개 Release·Tap 배포 및 로컬 DMG 재검증은 아직 완료하지 않았다.
+이번 개선은 Task 9의 배포 전 피드백 반영에 해당한다. 로컬 DMG 검증은 아래 2026-09-16 기록을 참고하며, 공개 Release·Tap 배포는 아직 완료하지 않았다.
 
 ### 차트·목록 선택 연동
 
@@ -114,7 +115,7 @@
 
 중간 반복 검사 15회 중 1회는 외부 창 개입과 함께 실패했으므로 반복 검사를 전부 통과한 것으로 기록하지 않는다. 이후 최종 전체 검증은 실패 없이 완료됐다. 모든 과거 실패가 동일 원인이었다고 단정하지 않으며, 재발 시 입력 방해와 실제 앱 회귀를 구분한다.
 
-변경 파일: `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`. 로컬 DMG 설치 검증과 공개 배포는 여전히 Task 9의 남은 작업이다.
+변경 파일: `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`. 이후 로컬 DMG 검증 결과는 아래에 기록하며, 공개 배포는 Task 9의 남은 작업이다.
 
 ### 이전 차트 회계·헤더 검증 기록
 
@@ -126,3 +127,39 @@
 - 테스트: `RAMMonitorTests/SnapshotBuilderTests.swift`, `RAMMonitorTests/MonitorModelTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`
 - 공개 문서: `README.md`, `README.ko.md` — 기존 변경을 보존하고 측정 방식 설명 갱신
 - 계획·진행 문서: `docs/index.md`, `docs/tasks.md`, `docs/product.md`, `docs/memory.md`, `docs/interface.md`, `docs/system-api.md`, `docs/quality.md`, `docs/implementation.md`
+
+## 2026-09-16 로컬 0.1.0 DMG 검증
+
+아래는 최초 DMG 검증 기록이다. 최신 산출물과 checksum은 다음 아이콘 교체 기록을 따른다.
+
+- 소스: `2e7a542d120508925ed276962dcfc8d5aaca697d` — 위 `make verify` 통과본. 앱 코드·빌드 스크립트 변경 없이 기존 `scripts/build-release.sh 0.1.0` 사용.
+- 환경: Apple Silicon, macOS 26.6.2, Xcode 27.0. 시스템 `xcode-select`는 CLT 유지.
+- 산출물: `release/RAM-Monitor-0.1.0.dmg`(3,773,437 bytes), `release/SHA256SUMS`, `release/ram-monitor.rb`. `release/`는 Git 추적 제외.
+- DMG SHA-256: `1da504de21e333f1b7e14e5ab49f08636002d732901fc6ca2e7e53f0b51796fd`.
+- [x] Release archive 성공, 앱 버전 0.1.0 / build 1 / macOS 14+ 확인
+- [x] Universal 2(`arm64`, `x86_64`)와 ad-hoc 서명 무결성, `hdiutil verify`, SHA-256 대조 통과
+- [x] DMG 내부 앱과 `/Applications` 바로가기 확인, cask checksum 일치 및 Ruby 구문 검사 통과
+- [x] 기존 설치본이 없는 `/Applications/RAM Monitor.app`에 DMG의 앱을 복사하고 DMG 분리 후 실행
+- [x] 실행 프로세스가 `/Applications` 설치본이며 빌드 산출물과 실행 파일 checksum이 같음을 확인
+- [x] 실제 RAM·CPU 갱신, 차트·목록 표시, 검색, 차트 클릭에 따른 검색 해제·목록 선택, 재클릭 선택 해제, 두 RAM 모드 전환 확인
+- [x] RAM 모드는 기존 Physical Footprint로 복원. 로그인 시 실행 설정은 변경하지 않음.
+
+이번 검증은 로컬 빌드 설치·실행 검증이다. Intel Mac 실제 실행, macOS 14 실제 실행, 인터넷에서 내려받은 앱의 Gatekeeper 최초 실행, Homebrew 설치는 미검증이다. ad-hoc 서명 무결성 통과는 Developer ID·notarization 또는 Gatekeeper 신뢰 통과를 의미하지 않는다.
+
+Git 태그·공개 Release·Tap 게시는 수행하지 않았다. cask URL은 향후 공개 Release를 가리키므로 아직 설치용으로 배포하지 않는다. Task 9는 설치본 사용자 최종 확인과 공개 배포 검증이 남아 `진행 중`을 유지한다.
+
+이번 변경 파일: `docs/index.md`, `docs/tasks.md`.
+
+### 앱 아이콘 교체
+
+- 작은 크기의 시인성 피드백을 반영한 확정 R 로고로 `AppIcon.appiconset`의 PNG 7개(16~1024px)를 교체했다. 두꺼운 파란 R과 큰 초록·주황 조각 두 개로 단순화하고, 중앙 여백을 줄였으며 R 다리를 길게 뻗었다. 모서리는 과하게 둥글거나 날카롭지 않게 다듬고 흰 배경·평면적인 형태·그라데이션을 유지했다.
+- 승인된 `exec-f708e4ee-47d6-43f4-bf20-80f1ebb2c26a.png`를 다시 생성하거나 보정하지 않고 macOS `sips`로 크기만 변환했다. 배경은 원본대로 불투명한 흰색이며, 최종 1024px 에셋은 `RAMMonitor/Assets.xcassets/AppIcon.appiconset/icon-1024.png`에 있다. 32px·64px 축소본도 확인했다.
+- 소스는 위 commit에 아이콘 변경만 추가한 상태다. 앱 동작 코드는 변경하지 않았으며 전체 UI 테스트는 재실행하지 않았다.
+- `make check`, 이미지 크기 확인, Universal 2 Release archive, 서명·DMG 무결성·SHA-256·cask Ruby 구문 검사 통과. 설치본의 `AppIcon.icns`와 실행 파일도 새 빌드와 동일함을 확인했고, 컴파일된 아이콘을 이미지로 추출해 확정 디자인과 대조했다.
+- 새 DMG: `release/RAM-Monitor-0.1.0.dmg`(2,643,071 bytes), SHA-256 `8429afa9dac439ac0d003c2d1dbfc31257206142a3feee05fa18c35d511fbc1b`. checksum과 cask도 함께 재생성했다.
+- DMG에서 `/Applications/RAM Monitor.app`을 갱신하고 분리 후 실행·차트와 목록 표시 확인. 직전 앱, 아이콘과 release 산출물은 `/private/tmp/ram-monitor-natural-icon.r8Qm2h/`에 임시 백업했다. 시스템 CLT 선택은 변경하지 않았다.
+- 변경 파일: `RAMMonitor/Assets.xcassets/AppIcon.appiconset/icon-{16,32,64,128,256,512,1024}.png`, `docs/index.md`, `docs/tasks.md`. 공개 배포는 별도 승인 후 진행한다.
+
+이미지 제작: built-in `image_gen`. 최종 편집 프롬프트 요약:
+
+> Refine only the corners of the three-piece R logo. Lightly ease exposed corners and the blue bowl-to-leg junction; retain the long, thick diagonal leg with a mostly straight terminal. Keep the smooth circular arcs, small central opening, blue/indigo, green/teal and yellow/orange gradients, flat design and solid white background. Avoid razor-sharp tips, pill-shaped ends, extra details, text, outlines, 3D and shadows.
