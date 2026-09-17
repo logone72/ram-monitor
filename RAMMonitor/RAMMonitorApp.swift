@@ -3,6 +3,7 @@ import SwiftUI
 @main
 @MainActor
 struct RAMMonitorApp: App {
+  static let summaryContentHeight: CGFloat = 642
   static let defaultWindowHeight: CGFloat = 694
   @State private var model = MonitorModel()
 

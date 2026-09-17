@@ -173,3 +173,11 @@ Git 태그·공개 Release·Tap 게시는 수행하지 않았다. cask URL은 �
 - 로컬 Xcode 27에서 외부 CLT 26.5 SDK를 사용하는 전체 앱 빌드는 SDK 등록 조회 오류로 완료하지 못했다. 해당 SDK의 import 검사와 Xcode 26.6 자체에서의 전체 검증을 동일하게 취급하지 않는다.
 - GitHub Actions의 새 환경 전체 검증은 push 후 확인해야 한다. 로컬 UI 테스트와 배포는 실행하지 않았다. 시스템 `xcode-select`는 CLT를 유지했다.
 - 변경 파일: `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `Makefile`, `docs/harness.md`, `docs/index.md`, `docs/tasks.md`.
+
+## 2026-09-17 CI 초기 창 높이 수정
+
+- 원격 CI `35082563719`에서 SDK 오류는 해소됐다. 빌드와 단위 테스트 30개는 통과했으나 UI 테스트 15개 중 `testInitialSummaryFitsWithoutScrolling`이 20pt 위치 변화로 실패했다.
+- 로컬에서 기존 UI 테스트는 통과했다. 실제 AppKit unified 툴바를 붙이는 회귀 테스트를 추가하자 창 전체 높이 694pt에서 콘텐츠 영역이 628pt로 부족해 실패했다. 기존 보정은 창 전체 높이만 비교했고, 콘텐츠 검사에서는 툴바를 52pt로 가정했다.
+- 초기 보정에 `window.contentLayoutRect`로 측정한 실제 제목 표시줄·툴바 높이를 사용해 콘텐츠 642pt를 확보한다. 화면의 가용 높이 제한과 이후 수동 축소는 유지한다. 기존 UI assertion은 완화하지 않았다.
+- 수정 후 로컬 단위 테스트 31개, 초기 높이·작은 창 UI 테스트 2개, `make check`, `make analyze` 통과. 전체 UI 테스트와 원격 CI 재실행은 수행하지 않았다. 커밋·push·배포 및 설치된 앱·DMG 교체도 하지 않았다.
+- 변경 파일: `RAMMonitor/RAMMonitorApp.swift`, `RAMMonitor/Views/SummaryScrollConfiguration.swift`, `RAMMonitorTests/MemoryLayoutTests.swift`, `docs/interface.md`, `docs/index.md`, `docs/tasks.md`.

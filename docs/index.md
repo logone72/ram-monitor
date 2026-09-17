@@ -17,7 +17,7 @@ macOS의 여러 subprocess를 작업 단위로 묶어 **실제 RAM 점유를 한
 - 구현: `8 / 9`
 - 현재 작업: [Task 9 — Universal DMG와 개인 Tap release](tasks.md#작업-목록)
 - 검증: `make verify`(단위 30개 · UI 15개) 통과 · 단순화한 R 아이콘의 0.1.0 DMG 재생성·설치 확인 (2026-09-16)
-- 다음 작업: CI SDK 환경 수정본의 원격 재검증 · 설치본 사용자 최종 확인
+- 다음 작업: CI 초기 창 높이 수정본의 원격 재검증 · 설치본 사용자 최종 확인
 - 이후 작업: 공개 GitHub Release와 personal Tap 설치 검증
 - 상세 진행도: [`tasks.md`](tasks.md)
 

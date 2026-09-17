@@ -15,8 +15,9 @@ struct SummaryScrollConfiguration: NSViewRepresentable {
 
     private func fitInitialWindow() {
       guard let window else { return }
+      let chromeHeight = window.frame.height - window.contentLayoutRect.height
       let height = min(
-        RAMMonitorApp.defaultWindowHeight,
+        max(RAMMonitorApp.defaultWindowHeight, RAMMonitorApp.summaryContentHeight + chromeHeight),
         window.screen?.visibleFrame.height ?? RAMMonitorApp.defaultWindowHeight)
       var frame = window.frame
       guard frame.height < height else { return }

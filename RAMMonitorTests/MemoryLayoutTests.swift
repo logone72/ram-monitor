@@ -6,6 +6,23 @@ import Testing
 
 @Suite("Memory layout")
 struct MemoryLayoutTests {
+  @Test @MainActor func initialWindowReservesSummarySpaceBelowToolbar() async {
+    let window = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 1000, height: RAMMonitorApp.defaultWindowHeight),
+      styleMask: [.titled, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+    window.toolbar = NSToolbar(identifier: "MemoryLayoutTests.toolbar")
+    window.toolbarStyle = .unified
+    let probe = SummaryScrollConfiguration.ScrollViewProbe()
+    window.contentView = probe
+    defer { window.contentView = nil }
+    await Task { @MainActor in }.value
+    #expect(window.contentLayoutRect.height >= RAMMonitorApp.summaryContentHeight)
+
+    window.setFrame(NSRect(x: 0, y: 0, width: 820, height: 520), display: false)
+    probe.layoutSubtreeIfNeeded()
+    #expect(window.frame.height == 520, "Manual resizing must remain available")
+  }
+
   @Test @MainActor func onlySummaryUsesOverlayScrollbars() throws {
     let suite = "MemoryLayoutTests.overlay"
     let defaults = try #require(UserDefaults(suiteName: suite))
@@ -48,8 +65,7 @@ struct MemoryLayoutTests {
         useBinaryUnits: true, selectedGroupID: nil, selectedSliceID: nil,
         onSelectSlice: { _ in }
       ).frame(width: 360).fixedSize(horizontal: false, vertical: true))
-    // The unified toolbar occupies 52pt of the initial window.
-    #expect(view.fittingSize.height <= RAMMonitorApp.defaultWindowHeight - 52)
+    #expect(view.fittingSize.height <= RAMMonitorApp.summaryContentHeight)
   }
 
   @MainActor private func scrollViews(in view: NSView) -> [NSScrollView] {
