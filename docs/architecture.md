@@ -35,6 +35,7 @@ Makefile
 RAMMonitor.xcodeproj
 RAMMonitor/
 ├── RAMMonitorApp.swift
+├── UITestSample.swift (Debug UI 테스트 전용)
 ├── Models/
 │   └── MonitorModels.swift
 ├── Services/
@@ -46,10 +47,13 @@ RAMMonitor/
     ├── MonitorView.swift
     ├── MemoryPieChart.swift
     ├── ProcessGroupRow.swift
+    ├── SummaryScrollConfiguration.swift
     └── SettingsView.swift
 RAMMonitorTests/
 ├── SnapshotBuilderTests.swift
 ├── MonitorModelTests.swift
+├── MemoryLayoutTests.swift
+├── LoginItemTests.swift
 └── ProcessSamplerIntegrationTests.swift
 RAMMonitorUITests/
 └── RAMMonitorUITests.swift
@@ -63,6 +67,8 @@ README.md
 ```
 
 작은 표시 helper는 사용하는 View 파일 안에 둔다. 두 화면 이상에서 실제로 중복될 때만 별도 파일로 옮긴다.
+
+헤더와 행의 열 너비·간격은 `ProcessGroupRow.swift`의 `WorkListLayout`을 공유한다. 갱신 주기는 `MonitorSettings.refreshIntervals`, 차트 안쪽 반지름은 `MemoryPieChart`의 한 상수를 표시와 클릭 판정에 함께 사용한다. 차트 조각은 `ChartSlice.Identity.group(groupID)` 또는 `.other` 하나로 식별하며 종류를 따로 저장하지 않는다.
 
 개발 명령과 자동 검증의 계약은 [`harness.md`](harness.md)를 따른다. 사람, Git hook, CI는 모두 `Makefile`의 같은 명령을 호출한다.
 
@@ -90,7 +96,7 @@ struct RawMonitorSample: Sendable {
 
 - 프로세스 열거, 경로, PPID, 시작 시각
 - Physical Footprint, Resident Size, CPU 누적 시간, thread 수, architecture
-- 전체 물리 RAM과 VM 통계
+- 전체 물리 RAM 용량(사용하지 않는 VM 통계는 수집하지 않음)
 - `(pid, startTime)`별 이전 CPU 샘플
 - 실행 경로별 Bundle 정보 캐시
 

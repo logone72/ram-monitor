@@ -1,9 +1,12 @@
+import AppKit
 import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
   @Bindable var model: MonitorModel
+  var readLoginItemStatus: () -> SMAppService.Status = { SMAppService.mainApp.status }
   @State private var launchAtLoginError: String?
+  @State private var loginItemStatus = SMAppService.Status.notRegistered
 
   var body: some View {
     TabView {
@@ -14,7 +17,7 @@ struct SettingsView: View {
         }
 
         Picker("Refresh interval", selection: $model.settings.refreshInterval) {
-          ForEach([1.0, 2.0, 3.0, 5.0, 10.0], id: \.self) { seconds in
+          ForEach(MonitorSettings.refreshIntervals, id: \.self) { seconds in
             Text("\(seconds.formatted()) seconds").tag(seconds)
           }
         }
@@ -31,6 +34,16 @@ struct SettingsView: View {
         }
 
         Toggle("Launch at login", isOn: launchAtLoginBinding)
+
+        if loginItemStatus == .requiresApproval {
+          Text("Approval is required in System Settings before RAM Monitor can launch at login.")
+            .font(.caption)
+          Button("Open Login Items Settings") { SMAppService.openSystemSettingsLoginItems() }
+          Button("Cancel pending registration") { setLaunchAtLogin(false) }
+        } else if loginItemStatus == .notFound {
+          Text("The login item is unavailable. Try again from an installed copy of RAM Monitor.")
+            .font(.caption)
+        }
 
         if let launchAtLoginError {
           Label(launchAtLoginError, systemImage: "exclamationmark.triangle.fill")
@@ -57,35 +70,45 @@ struct SettingsView: View {
     .padding(12)
     .frame(width: 460, height: 370)
     .accessibilityIdentifier("settings-view")
+    .onAppear { loginItemStatus = readLoginItemStatus() }
+    .onReceive(
+      NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification),
+      perform: { _ in loginItemStatus = readLoginItemStatus() })
   }
 
   private var launchAtLoginBinding: Binding<Bool> {
     Binding(
-      get: { model.settings.launchAtLogin },
-      set: { enabled in
-        launchAtLoginError = Self.applyLaunchAtLogin(enabled, to: model) { enabled in
-          if enabled {
-            try SMAppService.mainApp.register()
-          } else {
-            try SMAppService.mainApp.unregister()
-          }
-        }
-      }
+      get: { loginItemStatus == .enabled },
+      set: setLaunchAtLogin
     )
+  }
+
+  private func setLaunchAtLogin(_ enabled: Bool) {
+    let result = Self.applyLaunchAtLogin(
+      enabled,
+      registration: { enabled in
+        if enabled {
+          try SMAppService.mainApp.register()
+        } else {
+          try SMAppService.mainApp.unregister()
+        }
+      },
+      status: readLoginItemStatus)
+    loginItemStatus = result.status
+    launchAtLoginError = result.error
   }
 
   @MainActor
   static func applyLaunchAtLogin(
     _ enabled: Bool,
-    to model: MonitorModel,
-    registration: (Bool) throws -> Void
-  ) -> String? {
+    registration: (Bool) throws -> Void,
+    status: () -> SMAppService.Status
+  ) -> (status: SMAppService.Status, error: String?) {
     do {
-      try registration(enabled)
-      model.settings.launchAtLogin = enabled
-      return nil
+      if !enabled || status() != .requiresApproval { try registration(enabled) }
+      return (status(), nil)
     } catch {
-      return error.localizedDescription
+      return (status(), error.localizedDescription)
     }
   }
 }

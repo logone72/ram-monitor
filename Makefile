@@ -6,7 +6,7 @@ SWIFT_PATHS := RAMMonitor RAMMonitorTests RAMMonitorUITests
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
 
-.PHONY: bootstrap doctor format format-check lint release-check build test analyze check verify
+.PHONY: bootstrap doctor format format-check lint release-check build test test-unit test-ui analyze check verify
 
 bootstrap:
 	brew bundle --file=Brewfile
@@ -40,7 +40,13 @@ build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) build
 
 test:
-	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -enableCodeCoverage YES
+	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -enableCodeCoverage YES $(TEST_FLAGS)
+
+test-unit:
+	$(MAKE) test TEST_FLAGS=-only-testing:RAMMonitorTests
+
+test-ui:
+	$(MAKE) test TEST_FLAGS=-only-testing:RAMMonitorUITests
 
 analyze:
 	xcodebuild analyze -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA)

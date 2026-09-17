@@ -1,6 +1,17 @@
 import AppKit
 import SwiftUI
 
+enum WorkListLayout {
+  static let spacing: CGFloat = 10
+  static let horizontalPadding: CGFloat = 12
+  static let memoryWidth: CGFloat = 90
+  static let cpuWidth: CGFloat = 64
+  static let threadsWidth: CGFloat = 64
+  static let pidWidth: CGFloat = 64
+  static let processCountWidth: CGFloat = 76
+  static let architectureWidth: CGFloat = 88
+}
+
 struct ProcessGroupRow: View {
   @MainActor private static let iconCache: NSCache<NSString, NSImage> = {
     let cache = NSCache<NSString, NSImage>()
@@ -94,7 +105,7 @@ struct ProcessGroupRow: View {
   }
 
   private func row(_ values: Values, isChild: Bool) -> some View {
-    HStack(spacing: 10) {
+    HStack(spacing: WorkListLayout.spacing) {
       HStack(spacing: 7) {
         if isChild {
           Color.clear.frame(width: 37)
@@ -113,28 +124,33 @@ struct ProcessGroupRow: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       Text(ByteText.string(values.memoryBytes, binary: settings.useBinaryUnits))
-        .frame(width: 90, alignment: .trailing)
+        .frame(width: WorkListLayout.memoryWidth, alignment: .trailing)
         .monospacedDigit()
         .accessibilityIdentifier("work-unit-ram-value")
       Text(percent(values.cpuPercent))
-        .frame(width: 64, alignment: .trailing)
+        .frame(width: WorkListLayout.cpuWidth, alignment: .trailing)
         .monospacedDigit()
       if settings.showThreadsColumn {
-        Text(number(values.threads)).frame(width: 64, alignment: .trailing).monospacedDigit()
-      }
-      if settings.showPIDColumn {
-        Text(number(values.pid)).frame(width: 64, alignment: .trailing).monospacedDigit()
-      }
-      if settings.showProcessCountColumn {
-        Text(values.processCount.formatted()).frame(width: 76, alignment: .trailing)
+        Text(number(values.threads)).frame(width: WorkListLayout.threadsWidth, alignment: .trailing)
           .monospacedDigit()
       }
+      if settings.showPIDColumn {
+        Text(number(values.pid)).frame(width: WorkListLayout.pidWidth, alignment: .trailing)
+          .monospacedDigit()
+      }
+      if settings.showProcessCountColumn {
+        Text(values.processCount.formatted()).frame(
+          width: WorkListLayout.processCountWidth, alignment: .trailing
+        )
+        .monospacedDigit()
+      }
       if settings.showArchitectureColumn {
-        Text(values.architecture ?? "—").frame(width: 88, alignment: .trailing)
+        Text(values.architecture ?? "—").frame(
+          width: WorkListLayout.architectureWidth, alignment: .trailing)
       }
     }
     .font(isChild ? .caption : .body)
-    .padding(.horizontal, 12)
+    .padding(.horizontal, WorkListLayout.horizontalPadding)
     .frame(height: isChild ? 32 : 38)
     .accessibilityElement(children: isChild ? .ignore : .contain)
     .accessibilityLabel(

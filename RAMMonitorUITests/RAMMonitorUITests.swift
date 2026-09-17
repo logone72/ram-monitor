@@ -3,10 +3,19 @@ import XCTest
 
 final class RAMMonitorUITests: XCTestCase {
   @MainActor
-  func testInitialSummaryFitsAvailableScreen() throws {
+  private func launchFixtureApp(arguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = ["-AppleShowScrollBars", "Always", "-refreshInterval", "10"]
+    app.launchArguments =
+      ["--ui-testing", "YES", "-ApplePersistenceIgnoreState", "YES"] + arguments
     app.launch()
+    return app
+  }
+
+  @MainActor
+  func testInitialSummaryFitsAvailableScreen() throws {
+    let app = launchFixtureApp(arguments: [
+      "-AppleShowScrollBars", "Always", "-refreshInterval", "10",
+    ])
     XCTAssertTrue(app.buttons["chart-legend:other"].waitForExistence(timeout: 5))
     let scroll = app.scrollViews["memory-summary-scroll"]
     let summary = app.descendants(matching: .any)["physical-ram-summary"]
@@ -34,9 +43,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testListFocusDoesNotTintPaneDivider() throws {
-    let app = XCUIApplication()
-    app.launchArguments = ["-AppleAccentColor", "4", "-defaultSortOrder", "memory"]
-    app.launch()
+    let app = launchFixtureApp(arguments: ["-AppleAccentColor", "4", "-defaultSortOrder", "memory"])
     let legend = app.buttons.matching(
       NSPredicate(format: "identifier BEGINSWITH 'chart-legend:group:'")
     ).firstMatch
@@ -62,9 +69,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testRepeatedSelectionClearsHighlight() throws {
-    let app = XCUIApplication()
-    app.launchArguments = ["-refreshInterval", "10", "-defaultSortOrder", "memory"]
-    app.launch()
+    let app = launchFixtureApp(arguments: ["-refreshInterval", "10", "-defaultSortOrder", "memory"])
     let legend = app.buttons.matching(
       NSPredicate(format: "identifier BEGINSWITH 'chart-legend:group:'")
     ).firstMatch
@@ -99,9 +104,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testNonSelectionClicksClearHighlight() throws {
-    let app = XCUIApplication()
-    app.launchArguments = ["-refreshInterval", "10", "-defaultSortOrder", "memory"]
-    app.launch()
+    let app = launchFixtureApp(arguments: ["-refreshInterval", "10", "-defaultSortOrder", "memory"])
     let legend = app.buttons.matching(
       NSPredicate(format: "identifier BEGINSWITH 'chart-legend:group:'")
     ).firstMatch
@@ -142,9 +145,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testBlankListAndDisclosureClearSelection() throws {
-    let app = XCUIApplication()
-    app.launchArguments = ["-refreshInterval", "10", "-defaultSortOrder", "memory"]
-    app.launch()
+    let app = launchFixtureApp(arguments: ["-refreshInterval", "10", "-defaultSortOrder", "memory"])
     let legend = app.buttons.matching(
       NSPredicate(format: "identifier BEGINSWITH 'chart-legend:group:'")
     ).firstMatch
@@ -153,16 +154,19 @@ final class RAMMonitorUITests: XCTestCase {
     let row = app.descendants(matching: .any)["work-unit:\(groupID)"]
     let center = app.descendants(matching: .any)["chart-center"]
     let search = app.searchFields["Search work units"]
+    let query = legend.label
     search.click()
-    search.typeText(legend.label)
-    legend.click()
+    for character in query { search.typeText(String(character)) }
+    XCTAssertEqual(search.value as? String, query)
+    row.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).click()
     XCTAssertTrue(row.isSelected)
+    XCTAssertEqual(search.value as? String, query)
     let list = app.scrollViews.containing(.button, identifier: "Sort by RAM").firstMatch
     list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).click()
     XCTAssertFalse(row.isSelected)
     XCTAssertEqual(center.label, "Measured process total")
 
-    legend.click()
+    row.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).click()
     row.buttons.firstMatch.click()
     XCTAssertFalse(row.isSelected)
     XCTAssertEqual(center.label, "Measured process total")
@@ -170,9 +174,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testPieClickRevealsSelectedRowAndMovesKeyboardFocus() throws {
-    let app = XCUIApplication()
-    app.launchArguments = ["-refreshInterval", "10", "-defaultSortOrder", "name"]
-    app.launch()
+    let app = launchFixtureApp(arguments: ["-refreshInterval", "10", "-defaultSortOrder", "name"])
     let legend = app.buttons.matching(
       NSPredicate(format: "identifier BEGINSWITH 'chart-legend:group:'")
     ).firstMatch
@@ -212,9 +214,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testListSelectionAndHoverShareChartHighlight() throws {
-    let app = XCUIApplication()
-    app.launchArguments = ["-refreshInterval", "10", "-defaultSortOrder", "memory"]
-    app.launch()
+    let app = launchFixtureApp(arguments: ["-refreshInterval", "10", "-defaultSortOrder", "memory"])
     let legends = app.buttons.matching(
       NSPredicate(format: "identifier BEGINSWITH 'chart-legend:group:'"))
     XCTAssertTrue(legends.element(boundBy: 1).waitForExistence(timeout: 5))
@@ -278,15 +278,13 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   private func checkColumnAlignment(scrollbars: String, optionalColumns: Bool = true) throws {
-    let app = XCUIApplication()
-    app.launchArguments = [
+    let app = launchFixtureApp(arguments: [
       "-AppleShowScrollBars", scrollbars,
       "-showThreadsColumn", optionalColumns ? "YES" : "NO",
       "-showPIDColumn", "NO",
       "-showProcessCountColumn", optionalColumns ? "YES" : "NO",
       "-showArchitectureColumn", "NO",
-    ]
-    app.launch()
+    ])
 
     let header = app.buttons["Sort by RAM"]
     let value = app.staticTexts["work-unit-ram-value"].firstMatch
@@ -302,8 +300,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testPhysicalRAMSummaryRemainsReachableInSmallWindow() throws {
-    let app = XCUIApplication()
-    app.launch()
+    let app = launchFixtureApp()
     let window = app.windows["RAM Monitor"]
     XCTAssertTrue(window.waitForExistence(timeout: 3))
     let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
@@ -321,16 +318,14 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testMainWindowOpens() throws {
-    let app = XCUIApplication()
-    app.launch()
+    let app = launchFixtureApp()
 
     XCTAssertTrue(app.windows["RAM Monitor"].waitForExistence(timeout: 3))
   }
 
   @MainActor
   func testMainWindowHasChartListAndSearch() throws {
-    let app = XCUIApplication()
-    app.launch()
+    let app = launchFixtureApp()
 
     XCTAssertTrue(
       app.descendants(matching: .any)["memory-pie-chart"].waitForExistence(timeout: 3),
@@ -341,6 +336,7 @@ final class RAMMonitorUITests: XCTestCase {
       "Work unit list is missing"
     )
     XCTAssertTrue(app.searchFields["Search work units"].exists, "Search field is missing")
+    XCTAssertEqual(app.buttons["chart-legend:group:ui.work-unit.24"].label, "Work unit 24")
     app.buttons["Sort by RAM"].hover()
     XCTAssertEqual(
       app.descendants(matching: .any)["chart-center"].label, "Measured process total")
@@ -349,8 +345,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testSettingsOpen() throws {
-    let app = XCUIApplication()
-    app.launch()
+    let app = launchFixtureApp()
 
     app.typeKey(",", modifierFlags: .command)
 
@@ -362,8 +357,7 @@ final class RAMMonitorUITests: XCTestCase {
 
   @MainActor
   func testGroupExpansionAndEmptySearchResult() throws {
-    let app = XCUIApplication()
-    app.launch()
+    let app = launchFixtureApp()
 
     let expand = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Expand '")).firstMatch
     XCTAssertTrue(expand.waitForExistence(timeout: 5), "No expandable work unit is available")

@@ -24,9 +24,10 @@ make verify
 | SDK 경계 | Swift import, 구조체 크기 기반 buffer, 반환 바이트 판정 |
 | PID 열거 | 바이트 단위 buffer, 가득 찬 buffer 재시도, 0 PID 제거 |
 | 오류 격리 | 개별 PID 실패는 누락·`nil`, 전역 실패는 마지막 snapshot 유지 |
-| 시스템 자원 | 반복 수집 후 Mach host port send-right reference가 증가하지 않음 |
+| 시스템 자원 | 반복 수집 후 CPU·Bundle·process info cache가 현재 프로세스 범위를 넘지 않음 |
 | 필터·정렬 | 그룹명·자식명 검색, RAM·CPU·이름·process count 정렬 |
 | 설정 | 기본값과 `UserDefaults` 왕복 |
+| 로그인 항목 | OS의 enabled / requiresApproval / notRegistered / notFound 반영, 중복 등록 방지, 해제 실패 후 상태 재조회 |
 | 실제 수집 | 테스트 프로세스 자신을 발견하고 두 RAM 값 중 허용된 값을 수집 |
 | UI smoke | 실행, 차트와 물리 RAM 별도 요약, 그룹 확장, 설정 열기, 빈 검색 결과 |
 | 열 정렬 | 항상 표시/자동 숨김 스크롤바에서 헤더·RAM 행 오른쪽 끝 일치, 스크롤 후에도 헤더 고정 |
@@ -38,9 +39,15 @@ make verify
 make test
 ```
 
+입력 제어 없이 단위·실제 수집 통합 테스트만 실행할 때는 `make test-unit`, UI 검사만 실행할 때는 `make test-ui`를 사용한다. 이 부분 검사들은 `make verify`를 대신하지 않는다.
+
+UI 상호작용 검사는 Debug 앱의 `--ui-testing` 실행 인자로 [고정 샘플](../RAMMonitor/UITestSample.swift)을 주입한다. 32개 그룹·그룹당 2개 subprocess, top 8과 Other, 다른 RAM 모드 순위, 빈 검색 및 스크롤을 재현한다. 기존 `SampleProvider`를 재사용하고 설정은 전용 `UserDefaults` suite로 격리한다. Release에는 샘플과 실행 분기가 포함되지 않는다. 실제 시스템 수집은 `ProcessSamplerIntegrationTests`에서 별도로 검증한다.
+
+[UI 테스트의 실행 helper](../RAMMonitorUITests/RAMMonitorUITests.swift)는 이전 창 복원을 제외해 매번 초기 화면에서 시작한다. 실제 앱의 창 복원 정책은 바꾸지 않는다. 빈 목록 영역 검사는 검색어가 정확히 입력되고 선택 후에도 유지되는지 확인한다. 여러 단어로 된 검색어는 문자별로 입력해 XCTest가 각 입력 사이 앱의 응답을 기다리도록 한다.
+
 UI 검사는 잠금 해제된 화면에서 다른 마우스·키보드 입력 없이 실행한다. 시스템 권한 팝업이 개입하면 해당 실행은 앱 회귀 판정에 사용하지 않고, 사용자가 팝업을 처리한 뒤 다시 검증한다. 호버 뒤에는 접근성 label이 기대값으로 반영될 때까지 최대 3초 기다린다. 입력 재시도나 실패 무시는 하지 않는다.
 
-`ProcessSampler` 구현 전에는 [`system-api.md`](system-api.md)의 SDK import probe를 실행한다. `PROC_PIDPATHINFO_MAXSIZE`와 `HOST_VM_INFO64_COUNT`는 Swift에 import되지 않는다는 전제를 실제 활성 Xcode SDK에서 확인하고, 숫자를 하드코딩하지 않는다.
+`ProcessSampler` 변경 시에는 [`system-api.md`](system-api.md)의 SDK import probe를 실행한다. 경로와 구조체 버퍼 크기는 SDK의 상수·타입으로 계산하고 숫자를 하드코딩하지 않는다.
 
 ## 수동 비교
 

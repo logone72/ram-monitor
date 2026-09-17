@@ -5,6 +5,28 @@ import Testing
 
 @Suite("MonitorModel")
 struct MonitorModelTests {
+  @Test @MainActor func uiSampleRemainsStableAcrossRefreshesAndSupportsScrolling() async throws {
+    let defaults = try #require(UserDefaults(suiteName: #function))
+    defer { defaults.removePersistentDomain(forName: #function) }
+    let model = MonitorModel(defaults: defaults, sample: { UITestSample.raw })
+    await model.refresh()
+    let first = try #require(model.snapshot)
+    await model.refresh()
+    let second = try #require(model.snapshot)
+
+    #expect(first.groups.count == 32)
+    #expect(first.groups.allSatisfy { $0.processes.count == 2 })
+    #expect(first.chart.slices.count == 9)
+    #expect(first.groups.map(\.id) == second.groups.map(\.id))
+    #expect(first.chart.slices.map(\.bytes) == second.chart.slices.map(\.bytes))
+    #expect(first.groups.first?.displayName == "Work unit 24")
+    #expect(first.filtered(searchText: "qz", sortOrder: .name, ascending: true).isEmpty)
+
+    model.settings.memoryMetric = .residentSize
+    #expect(model.snapshot?.groups.first?.id != first.groups.first?.id)
+    #expect(model.snapshot?.totalPhysicalBytes == first.totalPhysicalBytes)
+  }
+
   @Test(arguments: [UInt64?.none, 0, 100])
   @MainActor func selectionUsesGroupIdentityAndOnlyHighlightsMeasuredMemory(bytes: UInt64?) throws {
     let defaults = try #require(UserDefaults(suiteName: #function + "\(bytes ?? 0)"))
@@ -24,14 +46,14 @@ struct MonitorModelTests {
     model.snapshot = SnapshotBuilder.build(raw: sample, metric: .physicalFootprint)
 
     model.selectedGroupID = "com.example.other-editor"
-    #expect(model.selectedChartSliceID == (bytes == 100 ? "group:com.example.other-editor" : nil))
-    #expect(model.selectChartSlice("group:com.example.editor"))
+    #expect(model.selectedChartSliceID == (bytes == 100 ? .group("com.example.other-editor") : nil))
+    #expect(model.selectChartSlice(.group("com.example.editor")))
     #expect(model.selectedGroupID == "com.example.editor")
 
     model.snapshot = SnapshotBuilder.build(
       raw: sample, metric: .physicalFootprint, topSliceCount: 0)
     model.selectedGroupID = "com.example.other-editor"
-    #expect(model.selectedChartSliceID == (bytes == 100 ? "other" : nil))
+    #expect(model.selectedChartSliceID == (bytes == 100 ? .other : nil))
   }
 
   @Test @MainActor func chartAndListToggleSelectionAndClearOnNonGroupClicks() async throws {
@@ -42,14 +64,14 @@ struct MonitorModelTests {
     await model.refresh()
 
     model.selectedGroupID = "com.example.editor"
-    #expect(model.selectedChartSliceID == "group:com.example.editor")
+    #expect(model.selectedChartSliceID == .group("com.example.editor"))
     model.settings.memoryMetric = .residentSize
-    #expect(model.selectedChartSliceID == "group:com.example.editor")
+    #expect(model.selectedChartSliceID == .group("com.example.editor"))
     await model.refresh()
     #expect(model.selectedGroupID == "com.example.editor")
 
     model.searchText = "Editor"
-    #expect(!model.selectChartSlice("group:com.example.editor"))
+    #expect(!model.selectChartSlice(.group("com.example.editor")))
     #expect(model.searchText == "Editor")
     #expect(model.selectedGroupID == nil)
     model.toggleGroupSelection("com.example.editor")
@@ -58,17 +80,17 @@ struct MonitorModelTests {
     #expect(model.selectedGroupID == nil)
     model.searchText = "no matching work unit"
     model.selectedGroupID = nil
-    #expect(model.selectChartSlice("group:com.example.editor"))
+    #expect(model.selectChartSlice(.group("com.example.editor")))
     #expect(model.searchText.isEmpty)
     #expect(model.selectedGroupID == "com.example.editor")
-    #expect(!model.selectChartSlice("missing"))
+    #expect(!model.selectChartSlice(.group("missing")))
     #expect(model.selectedGroupID == nil)
 
     model.selectedGroupID = "com.example.editor"
     model.snapshot = SnapshotBuilder.build(
       raw: makeRawSample(), metric: .physicalFootprint, topSliceCount: 0)
-    #expect(model.selectedChartSliceID == "other")
-    #expect(!model.selectChartSlice("other"))
+    #expect(model.selectedChartSliceID == .other)
+    #expect(!model.selectChartSlice(.other))
     #expect(model.selectedGroupID == nil)
     model.selectedGroupID = "com.example.editor"
     #expect(!model.selectChartSlice(nil))
@@ -114,7 +136,6 @@ struct MonitorModelTests {
     model.settings.refreshInterval = 5
     model.settings.useBinaryUnits = true
     model.settings.defaultSortOrder = .name
-    model.settings.launchAtLogin = true
     model.settings.showThreadsColumn = false
     model.settings.showPIDColumn = true
     model.settings.showProcessCountColumn = true
@@ -165,23 +186,6 @@ struct MonitorModelTests {
     #expect(model.isShowingStaleData)
   }
 
-  @Test @MainActor func failedLoginItemChangeKeepsStoredValue() throws {
-    let suite = "MonitorModelTests.loginItem"
-    let defaults = try #require(UserDefaults(suiteName: suite))
-    defer { defaults.removePersistentDomain(forName: suite) }
-    let model = MonitorModel(defaults: defaults, sample: { makeRawSample() })
-
-    let error = SettingsView.applyLaunchAtLogin(true, to: model) { _ in
-      throw TestError.failed
-    }
-
-    #expect(!model.settings.launchAtLogin)
-    #expect(error != nil)
-
-    let success = SettingsView.applyLaunchAtLogin(true, to: model) { _ in }
-    #expect(model.settings.launchAtLogin)
-    #expect(success == nil)
-  }
 }
 
 private enum TestError: Error {
@@ -223,12 +227,7 @@ private func makeRawSample() -> RawMonitorSample {
         architecture: "Apple"
       )
     ],
-    systemMemory: .init(
-      totalPhysicalBytes: 16_000,
-      activeBytes: 8_000,
-      wiredBytes: 2_000,
-      compressedBytes: 1_000
-    ),
+    systemMemory: .init(totalPhysicalBytes: 16_000),
     sampledAt: Date(timeIntervalSince1970: 10)
   )
 }

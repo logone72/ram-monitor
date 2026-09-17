@@ -48,20 +48,20 @@ final class MonitorModel {
     consecutiveRefreshFailures >= 2 && snapshot != nil
   }
 
-  var selectedChartSliceID: String? {
+  var selectedChartSliceID: ChartSlice.ID? {
     guard let snapshot,
       let group = snapshot.groups.first(where: { $0.id == selectedGroupID }),
       let bytes = group.memoryBytes(for: snapshot.metric), bytes > 0
     else { return nil }
-    return snapshot.chart.slices.first { $0.id == "group:\(group.id)" }?.id
-      ?? snapshot.chart.slices.first { $0.kind == .other }?.id
+    return snapshot.chart.slices.first { $0.id == .group(group.id) }?.id
+      ?? snapshot.chart.slices.first { $0.id == .other }?.id
   }
 
   @discardableResult
-  func selectChartSlice(_ sliceID: String?) -> Bool {
-    guard let snapshot,
-      snapshot.chart.slices.contains(where: { $0.id == sliceID && $0.kind == .group }),
-      let group = snapshot.groups.first(where: { "group:\($0.id)" == sliceID })
+  func selectChartSlice(_ sliceID: ChartSlice.ID?) -> Bool {
+    guard let snapshot, case .group(let groupID)? = sliceID,
+      snapshot.chart.slices.contains(where: { $0.id == sliceID }),
+      let group = snapshot.groups.first(where: { $0.id == groupID })
     else {
       selectedGroupID = nil
       return false
@@ -146,7 +146,6 @@ final class MonitorModel {
     defaults.set(settings.refreshInterval, forKey: Keys.refreshInterval)
     defaults.set(settings.useBinaryUnits, forKey: Keys.useBinaryUnits)
     defaults.set(settings.defaultSortOrder.rawValue, forKey: Keys.defaultSortOrder)
-    defaults.set(settings.launchAtLogin, forKey: Keys.launchAtLogin)
     defaults.set(settings.showThreadsColumn, forKey: Keys.showThreadsColumn)
     defaults.set(settings.showPIDColumn, forKey: Keys.showPIDColumn)
     defaults.set(settings.showProcessCountColumn, forKey: Keys.showProcessCountColumn)
@@ -159,14 +158,13 @@ final class MonitorModel {
       settings.memoryMetric = value
     }
     let interval = defaults.double(forKey: Keys.refreshInterval)
-    if [1, 2, 3, 5, 10].contains(interval) {
+    if MonitorSettings.refreshIntervals.contains(interval) {
       settings.refreshInterval = interval
     }
     settings.useBinaryUnits = defaults.bool(forKey: Keys.useBinaryUnits)
     if let value = defaults.string(forKey: Keys.defaultSortOrder).flatMap(SortOrder.init) {
       settings.defaultSortOrder = value
     }
-    settings.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
     if defaults.object(forKey: Keys.showThreadsColumn) != nil {
       settings.showThreadsColumn = defaults.bool(forKey: Keys.showThreadsColumn)
     }
@@ -181,7 +179,6 @@ final class MonitorModel {
     static let refreshInterval = "refreshInterval"
     static let useBinaryUnits = "useBinaryUnits"
     static let defaultSortOrder = "defaultSortOrder"
-    static let launchAtLogin = "launchAtLogin"
     static let showThreadsColumn = "showThreadsColumn"
     static let showPIDColumn = "showPIDColumn"
     static let showProcessCountColumn = "showProcessCountColumn"

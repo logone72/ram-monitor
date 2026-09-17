@@ -4,41 +4,12 @@
 
 한 번의 수집 주기에서 각 프로세스에 다음 값을 기록한다.
 
-```swift
-enum MemoryMetric: String, CaseIterable, Sendable {
-  case physicalFootprint
-  case residentSize
-}
-
-struct BundleIdentity: Hashable, Sendable {
-  let id: String
-  let displayName: String
-  let path: String
-}
-
-struct ProcessSample: Identifiable, Hashable, Sendable {
-  struct Identity: Hashable, Sendable {
-    let pid: pid_t
-    let startTime: TimeInterval
-  }
-
-  let id: Identity
-  let parentID: pid_t
-  let name: String
-  let path: String
-  let bundle: BundleIdentity?
-  let physicalFootprintBytes: UInt64?
-  let residentSizeBytes: UInt64?
-  let cpuPercent: Double?
-  let threadCount: Int32?
-  let architecture: String?
-}
-```
+수집 모델과 필드 정의는 [`MonitorModels.swift`](../RAMMonitor/Models/MonitorModels.swift)를 따른다.
 
 - `physicalFootprintBytes`: `proc_pid_rusage(..., RUSAGE_INFO_V4, ...)`의 `ri_phys_footprint`
 - `residentSizeBytes`: `proc_pidinfo(..., PROC_PIDTASKINFO, ...)`의 `pti_resident_size`
 - 시스템 전체 물리 RAM: `ProcessInfo.processInfo.physicalMemory`
-- 시스템 메모리 상태: `host_statistics64(..., HOST_VM_INFO64, ...)`
+- 사용하지 않는 시스템 VM page 통계는 수집하지 않는다.
 - 측정 실패 값은 `nil`이며 화면에는 `—`로 표시하고 합계에서는 제외한다.
 
 ## Physical Footprint 모드

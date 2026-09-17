@@ -17,8 +17,6 @@ V1은 `Darwin`과 `Foundation`만 사용한다. 별도 C bridging header, 외부
 | Physical Footprint | `proc_pid_rusage` + `RUSAGE_INFO_V4` | 반환값 `0` | 값 `nil` |
 | Architecture | `proc_pidinfo` + `PROC_PIDARCHINFO` | 반환 바이트가 구조체 크기와 같음 | 값 `nil` |
 | 전체 물리 RAM | `ProcessInfo.processInfo.physicalMemory` | 값 `> 0` | snapshot 전체 실패 |
-| VM page 통계 | `host_statistics64` + `HOST_VM_INFO64` | `KERN_SUCCESS` | snapshot 전체 실패 |
-| page 크기 | `host_page_size` | `KERN_SUCCESS`, 값 `> 0` | snapshot 전체 실패 |
 
 `proc_pidinfo`는 실패 시 `0`을 반환할 수 있으므로 `-1`만 검사하면 안 된다. 항상 요청한 구조체의 바이트 크기와 정확히 비교한다.
 
@@ -31,30 +29,23 @@ proc_taskinfo
 proc_archinfo
 proc_bsdinfo
 rusage_info_v4
-vm_statistics64_data_t
 
 PROC_PIDTASKINFO
 PROC_PIDARCHINFO
 PROC_PIDTBSDINFO
 RUSAGE_INFO_V4
-HOST_VM_INFO64
 CPU_TYPE_ARM64
 CPU_TYPE_X86_64
 MAXPATHLEN
 ```
 
-다음 두 C 매크로는 구조체 크기 계산을 포함해 Swift로 import되지 않으므로 Swift에서 계산한다.
+경로 버퍼 크기는 SDK의 `MAXPATHLEN`으로 계산한다.
 
 ```swift
 let processPathCapacity = Int(MAXPATHLEN) * 4
-let hostVMInfoCount = mach_msg_type_number_t(
-  MemoryLayout<vm_statistics64_data_t>.size
-    / MemoryLayout<integer_t>.size
-)
 ```
 
 - `PROC_PIDPATHINFO_MAXSIZE`를 숫자 `4096`으로 다시 선언하지 않는다.
-- `HOST_VM_INFO64_COUNT`를 숫자로 고정하지 않는다.
 - `PROC_PIDARCHINFO_FLAVOR` 같은 별도 상수를 만들지 않고 SDK의 `PROC_PIDARCHINFO`를 쓴다.
 - `proc_taskinfo`, `proc_archinfo`, `proc_bsdinfo`를 Swift 구조체로 복제하지 않는다. 현재 SDK가 세 구조체를 직접 import한다.
 
@@ -70,7 +61,6 @@ actor ProcessSampler {
 enum SamplingError: Error, Sendable {
   case processEnumerationFailed(errno: Int32)
   case invalidPIDBufferSize
-  case systemMemoryFailed(code: kern_return_t)
   case invalidSystemMemoryValue
 }
 ```
@@ -95,7 +85,7 @@ private var processInfoCache: [ProcessSample.Identity: StableProcessInfo] = [:]
 3. 각 PID의 경로, PPID, 시작 시각을 읽어 `[pid_t: BasicProcessInfo]`를 만든다.
 4. 기본 정보가 있는 PID만 RAM, CPU, thread, architecture를 읽는다.
 5. 완성된 기본 정보 사전으로 Bundle을 해석한다.
-6. 전체 물리 RAM과 VM 통계를 읽는다.
+6. 전체 물리 RAM 용량을 읽는다.
 7. 이번 주기에 남은 process identity로 다음 CPU 상태를 만든다.
 8. 전 단계가 성공하면 CPU 상태와 두 cache를 교체하고 `RawMonitorSample` 하나를 반환한다.
 
@@ -105,43 +95,7 @@ private var processInfoCache: [ProcessSample.Identity: StableProcessInfo] = [:]
 
 `proc_listallpids(nil, 0)`의 반환값은 PID 개수 추정치다. 프로세스 수는 두 호출 사이에 늘 수 있으므로 한 번의 고정 버퍼에 의존하지 않는다.
 
-```swift
-private func listAllPIDs() throws -> [pid_t] {
-  let estimate = proc_listallpids(nil, 0)
-  guard estimate > 0 else {
-    throw SamplingError.processEnumerationFailed(errno: errno)
-  }
-
-  var capacity = max(Int(estimate) * 2, 128)
-
-  for _ in 0..<3 {
-    let (byteCount, overflow) = capacity.multipliedReportingOverflow(
-      by: MemoryLayout<pid_t>.stride
-    )
-    guard !overflow, byteCount <= Int(Int32.max) else {
-      throw SamplingError.invalidPIDBufferSize
-    }
-
-    var buffer = [pid_t](repeating: 0, count: capacity)
-    let count = buffer.withUnsafeMutableBufferPointer {
-      proc_listallpids($0.baseAddress, Int32(byteCount))
-    }
-    guard count > 0 else {
-      throw SamplingError.processEnumerationFailed(errno: errno)
-    }
-
-    if Int(count) < capacity {
-      return Array(Set(buffer.prefix(Int(count)).filter { $0 > 0 }))
-    }
-
-    let (nextCapacity, capacityOverflow) = capacity.multipliedReportingOverflow(by: 2)
-    guard !capacityOverflow else { throw SamplingError.invalidPIDBufferSize }
-    capacity = nextCapacity
-  }
-
-  throw SamplingError.processEnumerationFailed(errno: EOVERFLOW)
-}
-```
+구현: [`ProcessSampler.listAllPIDs`](../RAMMonitor/Services/ProcessSampler.swift).
 
 규칙:
 
@@ -154,19 +108,7 @@ private func listAllPIDs() throws -> [pid_t] {
 
 ### 실행 경로
 
-```swift
-private func processPath(pid: pid_t) -> String? {
-  let capacity = Int(MAXPATHLEN) * 4
-  var buffer = [CChar](repeating: 0, count: capacity)
-  let length = buffer.withUnsafeMutableBufferPointer {
-    proc_pidpath(pid, $0.baseAddress, UInt32($0.count))
-  }
-  guard length > 0, length < capacity else { return nil }
-
-  let bytes = buffer.prefix(Int(length)).map { UInt8(bitPattern: $0) }
-  return String(decoding: bytes, as: UTF8.self)
-}
-```
+구현: [`ProcessSampler.processPath`](../RAMMonitor/Services/ProcessSampler.swift).
 
 - 반환 길이는 NUL 문자를 제외한 길이다.
 - 미리 0으로 채운 배열과 반환 길이를 함께 사용해 버퍼 밖을 읽지 않는다.
@@ -198,16 +140,7 @@ let startTime = TimeInterval(seconds) + TimeInterval(microseconds) / 1_000_000
 
 ## 3. Resident Size, CPU 누적값, thread 수
 
-```swift
-private func taskInfo(pid: pid_t) -> proc_taskinfo? {
-  var value = proc_taskinfo()
-  let size = Int32(MemoryLayout<proc_taskinfo>.size)
-  let result = withUnsafeMutablePointer(to: &value) {
-    proc_pidinfo(pid, PROC_PIDTASKINFO, 0, $0, size)
-  }
-  return result == size ? value : nil
-}
-```
+구현: [`ProcessSampler.taskInfo`](../RAMMonitor/Services/ProcessSampler.swift).
 
 사용 필드:
 
@@ -221,39 +154,14 @@ private func taskInfo(pid: pid_t) -> proc_taskinfo? {
 
 `rusage_info_t`가 `void *` typedef라 Swift에서 한 번의 pointer rebound가 필요하다.
 
-```swift
-private func physicalFootprint(pid: pid_t) -> UInt64? {
-  var value = rusage_info_v4()
-  let result = withUnsafeMutablePointer(to: &value) { pointer in
-    pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
-      proc_pid_rusage(pid, RUSAGE_INFO_V4, $0)
-    }
-  }
-  return result == 0 ? value.ri_phys_footprint : nil
-}
-```
+구현: [`ProcessSampler.physicalFootprint`](../RAMMonitor/Services/ProcessSampler.swift).
 
 - V1은 `ri_phys_footprint`만 사용한다.
 - 보호된 프로세스나 종료 중 프로세스의 실패는 정상적인 `nil`이다.
 
 ## 5. Architecture
 
-```swift
-private func architecture(pid: pid_t) -> String? {
-  var value = proc_archinfo()
-  let size = Int32(MemoryLayout<proc_archinfo>.size)
-  let result = withUnsafeMutablePointer(to: &value) {
-    proc_pidinfo(pid, PROC_PIDARCHINFO, 0, $0, size)
-  }
-  guard result == size else { return nil }
-
-  switch value.p_cputype {
-  case CPU_TYPE_ARM64: "Apple"
-  case CPU_TYPE_X86_64: "Intel"
-  default: nil
-  }
-}
-```
+구현: [`ProcessSampler.architecture`](../RAMMonitor/Services/ProcessSampler.swift).
 
 CPU type 숫자를 직접 적지 않는다. Rosetta로 실행되는 프로세스는 `x86_64`이므로 `Intel`로 표시된다. 알 수 없는 값과 호출 실패는 `nil`이며 화면에서 `—`로 보인다.
 
@@ -261,30 +169,9 @@ CPU type 숫자를 직접 적지 않는다. Rosetta로 실행되는 프로세스
 
 `pti_total_user`, `pti_total_system`, `mach_absolute_time()`은 같은 Mach absolute-time 단위로 delta를 비교한다. 비율만 필요하므로 둘 다 나노초로 바꾸지 않는다.
 
-```swift
-struct CPUTimeSnapshot: Sendable {
-  let user: UInt64
-  let system: UInt64
-  let timestamp: UInt64
-}
+구현: [`ProcessSampler.cpuPercent`](../RAMMonitor/Services/ProcessSampler.swift).
 
-nonisolated static func cpuPercent(
-  previous: CPUTimeSnapshot,
-  current: CPUTimeSnapshot
-) -> Double? {
-  let (previousCPU, previousOverflow) = previous.user.addingReportingOverflow(previous.system)
-  let (currentCPU, currentOverflow) = current.user.addingReportingOverflow(current.system)
-  guard !previousOverflow, !currentOverflow,
-        currentCPU >= previousCPU,
-        current.timestamp > previous.timestamp else { return nil }
-
-  let cpuDelta = currentCPU - previousCPU
-  let wallDelta = current.timestamp - previous.timestamp
-  return Double(cpuDelta) / Double(wallDelta) * 100
-}
-```
-
-두 선언은 모듈 내부에서만 보이게 두어 `@testable import`로 단위 검증한다. 앱의 공개 API로 노출하지 않는다.
+CPU 계산과 입력 타입은 모듈 내부에서만 보이게 두어 `@testable import`로 단위 검증한다. 앱의 공개 API로 노출하지 않는다.
 
 중요:
 
@@ -296,57 +183,11 @@ nonisolated static func cpuPercent(
 
 ## 7. 시스템 메모리
 
-```swift
-private func systemMemory() throws -> SystemMemorySample {
-  let total = ProcessInfo.processInfo.physicalMemory
-  guard total > 0 else { throw SamplingError.invalidSystemMemoryValue }
+구현: [`ProcessSampler.systemMemory`](../RAMMonitor/Services/ProcessSampler.swift).
 
-  let host = mach_host_self()
-  defer { mach_port_deallocate(mach_task_self_, host) }
+`SystemMemorySample`은 전체 물리 RAM 용량만 전달한다. 값이 0이면 수집을 실패 처리하고 마지막 성공 화면을 유지한다.
 
-  var pageSize: vm_size_t = 0
-  let pageResult = host_page_size(host, &pageSize)
-  guard pageResult == KERN_SUCCESS else {
-    throw SamplingError.systemMemoryFailed(code: pageResult)
-  }
-  guard pageSize > 0 else { throw SamplingError.invalidSystemMemoryValue }
-
-  var stats = vm_statistics64_data_t()
-  var count = mach_msg_type_number_t(
-    MemoryLayout<vm_statistics64_data_t>.size
-      / MemoryLayout<integer_t>.size
-  )
-  let statsResult = withUnsafeMutablePointer(to: &stats) { pointer in
-    pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-      host_statistics64(host, HOST_VM_INFO64, $0, &count)
-    }
-  }
-  guard statsResult == KERN_SUCCESS else {
-    throw SamplingError.systemMemoryFailed(code: statsResult)
-  }
-
-  guard
-    let active = checkedBytes(pages: stats.active_count, pageSize: pageSize),
-    let wired = checkedBytes(pages: stats.wire_count, pageSize: pageSize),
-    let compressed = checkedBytes(pages: stats.compressor_page_count, pageSize: pageSize)
-  else {
-    throw SamplingError.invalidSystemMemoryValue
-  }
-
-  return SystemMemorySample(
-    totalPhysicalBytes: total,
-    activeBytes: active,
-    wiredBytes: wired,
-    compressedBytes: compressed
-  )
-}
-```
-
-`checkedBytes`는 `UInt64(pages).multipliedReportingOverflow(by: UInt64(pageSize))`만 감싼 private helper다. 프로세스 차트 합계는 [`memory.md`](memory.md)의 규칙대로 `SnapshotBuilder`에서 checked arithmetic으로 수행하며 VM page count와 섞지 않는다.
-
-`mach_host_self()`가 만든 send right는 갱신마다 `mach_port_deallocate`로 해제한다. 성공·실패 반환 경로가 늘어나도 누락되지 않도록 host를 얻은 직후 `defer`를 등록한다.
-
-이 세 page count는 시스템 VM 상태이며 프로세스별 Physical Footprint와 정의가 다르다. 현재 수집 계약은 유지하지만 차트 분모·조각·사용 가능 메모리를 계산하는 데 사용하지 않는다. 두 RAM 모드 모두 측정 그룹 합계를 차트 기준으로 쓰고, 물리 RAM 용량만 별도 요약으로 전달한다.
+active/wired/compressed VM page 통계는 화면·집계에 사용하지 않으므로 수집하지 않는다. host port도 획득하지 않는다. 두 RAM 모드는 측정 그룹 합계를 차트 기준으로 쓰고, 물리 RAM 용량만 별도 요약으로 전달한다.
 
 ## 8. Bundle 해석
 
@@ -376,7 +217,7 @@ Bundle cache는 매 성공 주기 후 현재 실행 경로 집합에 없는 key�
 | rusage 실패 | Physical Footprint `nil` |
 | architecture 실패 | Architecture `nil` |
 | Bundle 해석 실패 | 실행 경로 그룹으로 fallback |
-| VM 통계·page 크기·물리 RAM 실패 | `sample()` throw, 마지막 성공 화면 유지 |
+| 물리 RAM 용량이 0 | `sample()` throw, 마지막 성공 화면 유지 |
 | 모든 개별 PID 제외 | 빈 프로세스 목록 + 유효한 시스템 메모리 snapshot |
 
 `EPERM`, `ESRCH` 같은 per-process 오류는 로그를 반복 출력하지 않는다. 사용자에게는 일부 값이 `—`로 보이는 것으로 충분하다. 전체 snapshot 실패만 `MonitorModel.lastRefreshError`에 짧게 표시한다.
@@ -421,19 +262,18 @@ Expected: compile 성공, 모든 크기와 상수가 0보다 큼. 시스템의 `
 1. 현재 테스트 프로세스가 PID 목록에 있다.
 2. 현재 프로세스의 경로와 시작 시각이 유효하다.
 3. 현재 프로세스에서 Physical Footprint 또는 Resident Size 중 하나 이상이 수집된다.
-4. 전체 물리 RAM, page size, active/wired/compressed 값이 유효하다.
+4. 전체 물리 RAM 용량이 `ProcessInfo.processInfo.physicalMemory`와 같고 0보다 크다.
 5. CPU 순수 함수는 동일한 CPU tick delta와 wall tick delta에 `100`을 반환한다.
 6. CPU counter 또는 timestamp가 역전되면 `nil`이다.
 7. 두 번째 실제 샘플의 현재 프로세스 CPU가 유한하고 음수가 아니다.
 8. architecture가 있으면 `Apple` 또는 `Intel` 중 하나다.
 9. sampler가 세 번 연속 실행되어도 stale CPU·Bundle·process info cache가 계속 늘지 않는다.
-10. 시스템 메모리를 반복 수집해도 host port send-right reference가 누적되지 않는다.
 
 통합 테스트는 실행 중인 다른 앱의 특정 PID나 정확한 RAM 바이트를 고정하지 않는다. 커널 상태와 보호 정책은 실행마다 달라진다.
 
 ## 근거
 
-- 설치된 SDK: `usr/include/libproc.h`, `usr/include/sys/proc_info.h`, `usr/include/sys/resource.h`, `usr/include/mach/host_info.h`, `usr/include/mach/vm_statistics.h`
+- 설치된 SDK: `usr/include/libproc.h`, `usr/include/sys/proc_info.h`, `usr/include/sys/resource.h`
 - [Apple XNU `proc_info.h`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/proc_info.h)
 - [Apple XNU process observability](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/recount.md)
 - [Apple `rusage_info_v4`](https://developer.apple.com/documentation/kernel/rusage_info_v4)

@@ -1,6 +1,6 @@
 # RAM Monitor Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **초기 구현 기록:** 완료된 단계의 순서·검증 의도를 보존한 문서입니다. 현재 진행도는 [`tasks.md`](tasks.md), 현행 동작은 개별 사양 문서, 실행 코드·도구 설정은 아래 연결된 실제 파일을 기준으로 합니다. 과거의 실패 확인·commit 단계는 재실행 지시가 아닙니다.
 
 **Goal:** 새 독립 macOS 프로젝트에서 작업 그룹별 RAM을 중심으로 보여주는 RAM Monitor V1을 완성하고 DMG와 개인 Homebrew Tap으로 배포한다.
 
@@ -91,57 +91,13 @@ ONLY_ACTIVE_ARCH[Release] = NO
 
 - [x] **Step 3: 최소 앱 shell 작성**
 
-```swift
-import SwiftUI
-
-@main
-struct RAMMonitorApp: App {
-  var body: some Scene {
-    Window("RAM Monitor", id: "main") {
-      MonitorView()
-    }
-    .defaultSize(width: 1000, height: 680)
-
-    Settings {
-      Text("Settings")
-    }
-  }
-}
-```
+현재 구현: [`RAMMonitor/RAMMonitorApp.swift`](../RAMMonitor/RAMMonitorApp.swift).
 
 - [x] **Step 4: 저장소 규칙과 도구 설정 작성**
 
 `AGENTS.md`는 다음 내용으로 시작하고 100줄 이내로 유지한다.
 
-```markdown
-# RAM Monitor
-
-macOS 14+에서 subprocess를 작업 단위로 묶어 RAM과 CPU를 보여주는 SwiftUI 앱이다.
-
-## Source of truth
-
-- 제품과 기술 계약: `docs/`
-- 구현 순서와 완료 조건: `docs/implementation.md`
-- 시스템 호출 계약: `docs/system-api.md`
-
-## Commands
-
-- 환경 준비: `make bootstrap`
-- 포맷 적용: `make format`
-- 빠른 검사: `make check`
-- 전체 검증: `make verify`
-
-## Rules
-
-- Swift 6 strict concurrency와 macOS 14 deployment target을 유지한다.
-- 시스템 호출은 `ProcessSampler`, 순수 계산은 `SnapshotBuilder`, 화면 상태는 `MonitorModel`에 둔다.
-- 앱 target에는 Apple 시스템 프레임워크만 연결한다.
-- 동작 변경은 실패하는 최소 테스트를 먼저 추가하고 통과시킨다.
-- 소스와 staging 상태를 hook에서 자동 변경하지 않는다.
-- 변경 범위와 무관한 파일을 수정하지 않는다.
-- 완료 보고에 변경 파일과 실행한 검증 결과를 적는다.
-- Git staging, commit, push, release는 현재 요청에서 명시적으로 승인된 경우에만 수행한다.
-```
+현재 구현: [`AGENTS.md`](../AGENTS.md).
 
 `CLAUDE.md`는 별도 내용을 복제하지 않고 링크로 만든다.
 
@@ -151,148 +107,35 @@ ln -s AGENTS.md CLAUDE.md
 
 `.gitignore`:
 
-```gitignore
-.DS_Store
-.build/
-DerivedData/
-*.xcuserstate
-xcuserdata/
-release/
-```
+현재 구현: [`.gitignore`](../.gitignore).
 
 `.swift-format`:
 
-```json
-{
-  "version": 1,
-  "lineLength": 100,
-  "indentation": { "spaces": 2 },
-  "multiElementCollectionTrailingCommas": true
-}
-```
+현재 구현: [`.swift-format`](../.swift-format).
 
 `.swiftlint.yml`:
 
-```yaml
-included:
-  - RAMMonitor
-  - RAMMonitorTests
-  - RAMMonitorUITests
-
-excluded:
-  - .build
-
-disabled_rules:
-  - line_length
-  - trailing_comma
-
-opt_in_rules:
-  - force_unwrapping
-
-function_body_length:
-  warning: 60
-  error: 120
-
-type_body_length:
-  warning: 350
-  error: 700
-
-file_length:
-  warning: 600
-  error: 1000
-```
+현재 구현: [`.swiftlint.yml`](../.swiftlint.yml).
 
 `Brewfile`:
 
-```ruby
-brew "swiftlint"
-```
+현재 구현: [`Brewfile`](../Brewfile).
 
 - [x] **Step 5: 공통 명령 표면 작성**
 
 `Makefile`:
 
-```makefile
-PROJECT := RAMMonitor.xcodeproj
-SCHEME := RAMMonitor
-DESTINATION := platform=macOS
-DERIVED_DATA := .build/DerivedData
-SWIFT_PATHS := RAMMonitor RAMMonitorTests RAMMonitorUITests
-DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
-export DEVELOPER_DIR
-
-.PHONY: bootstrap doctor format format-check lint release-check build test analyze check verify
-
-bootstrap:
-	brew bundle --file=Brewfile
-	git config core.hooksPath .githooks
-	chmod +x .githooks/pre-commit .githooks/commit-msg
-
-doctor:
-	@test -x '$(DEVELOPER_DIR)/usr/bin/xcodebuild'
-	@command -v xcrun >/dev/null
-	@command -v swiftlint >/dev/null
-	xcodebuild -version
-	xcrun swift --version
-	xcrun swift-format --version
-	swiftlint version
-
-format:
-	xcrun swift-format format --configuration .swift-format --recursive --parallel --in-place $(SWIFT_PATHS)
-
-format-check:
-	xcrun swift-format lint --configuration .swift-format --recursive --parallel --strict $(SWIFT_PATHS)
-
-lint:
-	swiftlint lint --strict --config .swiftlint.yml
-
-release-check:
-	bash -n scripts/build-release.sh
-
-build:
-	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) build
-
-test:
-	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -enableCodeCoverage YES
-
-analyze:
-	xcodebuild analyze -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA)
-
-check: format-check lint release-check
-	git diff --check
-	git diff --cached --check
-
-verify: doctor check build test analyze
-```
+현재 구현: [`Makefile`](../Makefile).
 
 - [x] **Step 6: 로컬 Git 검사 작성**
 
 `.githooks/pre-commit`:
 
-```sh
-#!/bin/sh
-set -eu
-
-make check
-```
+현재 구현: [`.githooks/pre-commit`](../.githooks/pre-commit).
 
 `.githooks/commit-msg`:
 
-```sh
-#!/bin/sh
-set -eu
-
-subject=$(sed -n '1p' "$1")
-
-case "$subject" in
-  Merge\ *|Revert\ *) exit 0 ;;
-esac
-
-if ! printf '%s\n' "$subject" | grep -Eq '^(feat|fix|refactor|chore|test|docs|build|ci)(\([a-z0-9._/-]+\))?!?: .+'; then
-  printf '%s\n' 'Commit subject must follow Conventional Commits.' >&2
-  exit 1
-fi
-```
+현재 구현: [`.githooks/commit-msg`](../.githooks/commit-msg).
 
 두 hook은 검사만 실행하고 파일이나 staging 상태를 변경하지 않는다.
 
@@ -300,32 +143,7 @@ fi
 
 `.github/workflows/ci.yml`:
 
-```yaml
-name: CI
-
-on:
-  pull_request:
-  push:
-    branches: [main]
-
-permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  verify:
-    runs-on: macos-15
-    timeout-minutes: 30
-    env:
-      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
-    steps:
-      - uses: actions/checkout@v4
-      - run: brew bundle --file=Brewfile
-      - run: make verify
-```
+현재 구현: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 - [x] **Step 8: 하네스 자체 검사**
 
@@ -377,46 +195,11 @@ git commit -m "chore: initialize RAM Monitor"
 
 - [x] **Step 1: Physical Footprint 차트 불변 조건 테스트 작성**
 
-```swift
-import Testing
-@testable import RAMMonitor
-
-@Suite("SnapshotBuilder")
-struct SnapshotBuilderTests {
-  @Test func physicalChartUsesMeasuredTotalAndKeepsPhysicalRAMSeparate() throws {
-    let raw = Fixtures.raw(
-      physicalRAM: 16_000,
-      systemUsed: 12_000,
-      processes: [
-        .sample(id: 1, group: "browser", footprint: 5_000, resident: 7_000),
-        .sample(id: 2, group: "editor", footprint: 3_000, resident: 4_000),
-      ]
-    )
-
-    let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
-
-    #expect(result.chart.denominatorBytes == 8_000)
-    #expect(result.chart.slices.reduce(0) { $0 + $1.bytes } == 8_000)
-    #expect(result.totalPhysicalBytes == 16_000)
-  }
-}
-```
+현재 구현: [`RAMMonitorTests/SnapshotBuilderTests.swift`](../RAMMonitorTests/SnapshotBuilderTests.swift).
 
 - [x] **Step 2: Resident Size 분모와 top 8 테스트 작성**
 
-```swift
-extension SnapshotBuilderTests {
-  @Test func residentChartUsesMeasuredProcessTotal() {
-    let raw = Fixtures.rawWithTenGroups(residentBytesPerGroup: 100)
-    let result = SnapshotBuilder.build(raw: raw, metric: .residentSize, topSliceCount: 8)
-
-    #expect(result.chart.denominatorBytes == 1_000)
-    #expect(result.chart.slices.filter { $0.kind == .group }.count == 8)
-    #expect(result.chart.slices.first { $0.kind == .other }?.bytes == 200)
-    #expect(result.chart.slices.count == 9)
-  }
-}
-```
+현재 구현: [`RAMMonitorTests/SnapshotBuilderTests.swift`](../RAMMonitorTests/SnapshotBuilderTests.swift).
 
 - [x] **Step 3: 테스트가 모델 부재로 실패하는지 확인**
 
@@ -430,160 +213,15 @@ Expected: `MemoryMetric` 또는 `SnapshotBuilder`를 찾지 못해 compile failu
 
 - [x] **Step 4: 모델과 builder 최소 구현**
 
-다음 공개 표면을 정확히 구현한다.
+모델의 타입과 생성자 정의는 실제 소스를 따른다.
 
-```swift
-enum MemoryMetric: String, CaseIterable, Sendable {
-  case physicalFootprint
-  case residentSize
-}
-
-enum SortOrder: String, CaseIterable, Sendable {
-  case memory
-  case cpu
-  case name
-  case processCount
-}
-
-struct BundleIdentity: Hashable, Sendable {
-  let id: String
-  let displayName: String
-  let path: String
-}
-
-struct ProcessSample: Identifiable, Hashable, Sendable {
-  struct Identity: Hashable, Sendable {
-    let pid: pid_t
-    let startTime: TimeInterval
-  }
-
-  let id: Identity
-  let parentID: pid_t
-  let name: String
-  let path: String
-  let bundle: BundleIdentity?
-  let physicalFootprintBytes: UInt64?
-  let residentSizeBytes: UInt64?
-  let cpuPercent: Double?
-  let threadCount: Int32?
-  let architecture: String?
-}
-
-struct ProcessGroup: Identifiable, Sendable {
-  let id: String
-  let displayName: String
-  let bundlePath: String?
-  let processes: [ProcessSample]
-  let totalPhysicalFootprintBytes: UInt64?
-  let totalResidentSizeBytes: UInt64?
-  let totalCPUPercent: Double?
-  let totalThreads: Int32?
-}
-
-enum ChartSliceKind: Equatable, Sendable {
-  case group
-  case other
-}
-
-struct ChartSlice: Identifiable, Sendable {
-  let id: String
-  let label: String
-  let bytes: UInt64
-  let kind: ChartSliceKind
-}
-
-struct MemoryChart: Sendable {
-  let denominatorBytes: UInt64
-  let slices: [ChartSlice]
-}
-
-struct SystemMemorySample: Sendable {
-  let totalPhysicalBytes: UInt64
-  let activeBytes: UInt64
-  let wiredBytes: UInt64
-  let compressedBytes: UInt64
-}
-
-struct RawMonitorSample: Sendable {
-  let processes: [ProcessSample]
-  let systemMemory: SystemMemorySample
-  let sampledAt: Date
-}
-
-struct MonitorSnapshot: Sendable {
-  let metric: MemoryMetric
-  let groups: [ProcessGroup]
-  let chart: MemoryChart
-  let totalPhysicalBytes: UInt64
-  let sampledAt: Date
-}
-
-struct MonitorSettings: Sendable, Equatable {
-  var memoryMetric: MemoryMetric = .physicalFootprint
-  var refreshInterval: TimeInterval = 2
-  var useBinaryUnits = false
-  var defaultSortOrder: SortOrder = .memory
-  var launchAtLogin = false
-  var showThreadsColumn = true
-  var showPIDColumn = false
-  var showProcessCountColumn = false
-  var showArchitectureColumn = false
-}
-
-extension ProcessGroup {
-  func memoryBytes(for metric: MemoryMetric) -> UInt64? {
-    switch metric {
-    case .physicalFootprint: totalPhysicalFootprintBytes
-    case .residentSize: totalResidentSizeBytes
-    }
-  }
-}
-
-enum SnapshotBuilder {
-  static func build(
-    raw: RawMonitorSample,
-    metric: MemoryMetric,
-    topSliceCount: Int = 8
-  ) -> MonitorSnapshot
-}
-
-extension ProcessSample {
-  func memoryBytes(for metric: MemoryMetric) -> UInt64? {
-    switch metric {
-    case .physicalFootprint: physicalFootprintBytes
-    case .residentSize: residentSizeBytes
-    }
-  }
-}
-```
+현재 구현: [`RAMMonitor/Models/MonitorModels.swift`](../RAMMonitor/Models/MonitorModels.swift).
 
 두 모드 모두 선택한 측정 그룹 합계를 분모로 사용한다. 상위 8개와 Other, 원본 바이트 보존, `nil`·0·overflow 처리를 [`memory.md`](memory.md)대로 구현한다. 물리 RAM 용량은 차트와 별도로 snapshot에 전달한다.
 
-같은 테스트 파일에만 쓰는 fixture는 아래 표면으로 정의한다. `group`이 있으면 같은 문자열을 ID와 표시 이름으로 갖는 `BundleIdentity`를 만들고, `systemUsed`는 `activeBytes`에 넣으며 wired와 compressed는 0으로 둔다.
+같은 테스트 파일에서만 쓰는 fixture는 해당 테스트 안에 둔다. 물리 RAM 용량과 프로세스별 측정값만 입력하며 사용하지 않는 VM 통계는 만들지 않는다.
 
-```swift
-private enum Fixtures {
-  static func raw(
-    physicalRAM: UInt64 = 16_000,
-    systemUsed: UInt64 = 12_000,
-    processes: [ProcessSample]
-  ) -> RawMonitorSample
-
-  static func rawWithTenGroups(residentBytesPerGroup: UInt64) -> RawMonitorSample
-}
-
-private extension ProcessSample {
-  static func sample(
-    id: pid_t,
-    group: String? = nil,
-    path: String? = nil,
-    bundle: BundleIdentity? = nil,
-    footprint: UInt64? = 100,
-    resident: UInt64? = 100,
-    cpu: Double? = 0
-  ) -> ProcessSample
-}
-```
+현재 구현: [`RAMMonitorTests/SnapshotBuilderTests.swift`](../RAMMonitorTests/SnapshotBuilderTests.swift).
 
 - [x] **Step 5: builder 테스트 통과 확인**
 
@@ -621,53 +259,11 @@ git commit -m "feat: add RAM snapshot accounting"
 
 [`system-api.md`](system-api.md)의 SDK import probe를 그대로 실행한다.
 
-Expected: `proc_taskinfo`, `proc_archinfo`, `rusage_info_v4`, `PROC_PIDTASKINFO`, `PROC_PIDARCHINFO`, `MAXPATHLEN`이 compile된다. `PROC_PIDPATHINFO_MAXSIZE`와 `HOST_VM_INFO64_COUNT`는 Swift에서 직접 쓰지 않는다.
+Expected: `proc_taskinfo`, `proc_archinfo`, `rusage_info_v4`, `PROC_PIDTASKINFO`, `PROC_PIDARCHINFO`, `MAXPATHLEN`이 compile된다. 경로 버퍼 크기는 `MAXPATHLEN`을 기준으로 계산한다.
 
 - [x] **Step 2: 실제 현재 프로세스와 CPU 단위 테스트 작성**
 
-```swift
-import Testing
-@testable import RAMMonitor
-
-@Suite("ProcessSampler integration", .serialized)
-struct ProcessSamplerIntegrationTests {
-  @Test func sampleContainsCurrentProcessAndPhysicalRAM() async throws {
-    let sampler = ProcessSampler()
-    let raw = try await sampler.sample()
-    let currentPID = ProcessInfo.processInfo.processIdentifier
-    let current = try #require(raw.processes.first { $0.id.pid == currentPID })
-
-    #expect(raw.systemMemory.totalPhysicalBytes > 0)
-    #expect(current.physicalFootprintBytes != nil || current.residentSizeBytes != nil)
-  }
-
-  @Test func firstCPUReadingIsUnavailable() async throws {
-    let sampler = ProcessSampler()
-    let raw = try await sampler.sample()
-    #expect(raw.processes.allSatisfy { $0.cpuPercent == nil })
-  }
-
-  @Test func cpuUsesTheSameMachTickUnit() {
-    let previous = CPUTimeSnapshot(user: 100, system: 100, timestamp: 1_000)
-    let current = CPUTimeSnapshot(user: 400, system: 300, timestamp: 1_500)
-
-    #expect(ProcessSampler.cpuPercent(previous: previous, current: current) == 100)
-  }
-
-  @Test func cpuRejectsCounterAndClockRollback() {
-    let baseline = CPUTimeSnapshot(user: 100, system: 100, timestamp: 1_000)
-
-    #expect(ProcessSampler.cpuPercent(
-      previous: baseline,
-      current: .init(user: 99, system: 100, timestamp: 1_500)
-    ) == nil)
-    #expect(ProcessSampler.cpuPercent(
-      previous: baseline,
-      current: .init(user: 200, system: 200, timestamp: 999)
-    ) == nil)
-  }
-}
-```
+현재 구현: [`RAMMonitorTests/ProcessSamplerIntegrationTests.swift`](../RAMMonitorTests/ProcessSamplerIntegrationTests.swift).
 
 - [x] **Step 3: 테스트 실패 확인**
 
@@ -703,8 +299,6 @@ proc_pidinfo(PROC_PIDTBSDINFO)
 proc_pidinfo(PROC_PIDTASKINFO)
 proc_pidinfo(PROC_PIDARCHINFO)
 proc_pid_rusage(RUSAGE_INFO_V4)
-host_page_size
-host_statistics64(HOST_VM_INFO64)
 ```
 
 `proc_taskinfo`, `proc_archinfo`, `rusage_info_v4`는 SDK가 import한 타입을 사용한다. `proc_pidinfo` 결과는 요청 구조체의 `MemoryLayout.size`와 같아야 성공이고, `proc_pid_rusage`는 `0`이어야 성공이다.
@@ -722,21 +316,12 @@ host_statistics64(HOST_VM_INFO64)
 
 Bundle은 실행 경로의 가장 바깥쪽 `.app` → 부모 체인 5단계 → XPC 상위 `.app` 순서로 해석하고 성공 결과만 경로별로 캐시한다. 부모 cycle은 방문 PID set으로 중단한다.
 
-```swift
-private func resolveBundle(
-  for process: BasicProcessInfo,
-  allProcesses: [pid_t: BasicProcessInfo]
-) -> BundleIdentity?
-```
+현재 구현: [`RAMMonitor/Services/ProcessSampler.swift`](../RAMMonitor/Services/ProcessSampler.swift).
 
 - [x] **Step 7: 시스템 메모리 구현**
 
 - 전체 물리 RAM은 `ProcessInfo.processInfo.physicalMemory`로 읽는다.
-- page size는 `host_page_size`로 읽는다.
-- `HOST_VM_INFO64_COUNT` 대신 `MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size`로 count를 계산한다.
-- active, wired, compressor page count에 page size를 checked multiply한다.
 - 시스템 메모리 실패는 `SamplingError`를 throw해 마지막 성공 snapshot을 유지한다.
-- `mach_host_self()` 직후 `defer { mach_port_deallocate(mach_task_self_, host) }`를 등록해 모든 반환 경로에서 send right를 해제한다.
 
 정확한 pointer rebound와 오류 표는 [`system-api.md`](system-api.md)를 그대로 따른다.
 
@@ -778,23 +363,7 @@ git commit -m "feat: sample process RAM and CPU"
 
 - [x] **Step 1: 그룹 키와 fallback 테스트 작성**
 
-```swift
-extension SnapshotBuilderTests {
-  @Test func groupsByBundleIDAndFallsBackToPath() {
-    let sharedBundle = BundleIdentity(id: "com.example.browser", displayName: "Browser", path: "/Applications/Browser.app")
-    let raw = Fixtures.raw(processes: [
-      .sample(id: 1, path: "/Applications/Browser.app/Contents/MacOS/Browser", bundle: sharedBundle),
-      .sample(id: 2, path: "/Applications/Browser.app/Contents/Frameworks/Helper", bundle: sharedBundle),
-      .sample(id: 3, path: "/usr/bin/task", bundle: nil),
-    ])
-
-    let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
-
-    #expect(result.groups.first { $0.id == "com.example.browser" }?.processes.count == 2)
-    #expect(result.groups.contains { $0.id == "/usr/bin/task" })
-  }
-}
-```
+현재 구현: [`RAMMonitorTests/SnapshotBuilderTests.swift`](../RAMMonitorTests/SnapshotBuilderTests.swift).
 
 - [x] **Step 2: 이름이 같고 Bundle ID가 다른 그룹을 합치지 않는 테스트 작성**
 
@@ -804,15 +373,7 @@ extension SnapshotBuilderTests {
 
 그룹명 검색, 자식 이름 검색, RAM 내림차순, CPU 내림차순, locale-aware 이름 오름차순, process count 정렬을 각각 합성 snapshot으로 검사한다.
 
-```swift
-extension MonitorSnapshot {
-  func filtered(
-    searchText: String,
-    sortOrder: SortOrder,
-    ascending: Bool
-  ) -> [ProcessGroup]
-}
-```
+현재 구현: [`RAMMonitor/Services/SnapshotBuilder.swift`](../RAMMonitor/Services/SnapshotBuilder.swift).
 
 - [x] **Step 4: 테스트 실패 확인**
 
@@ -826,11 +387,7 @@ Expected: 새 그룹핑 또는 필터 함수에 대한 test failure.
 
 - [x] **Step 5: 현재 그룹 기준 그대로 구현**
 
-```swift
-let groupID = process.bundle?.id ?? process.path
-let displayName = process.bundle?.displayName
-  ?? URL(fileURLWithPath: process.path).lastPathComponent
-```
+현재 구현: [`RAMMonitor/Services/SnapshotBuilder.swift`](../RAMMonitor/Services/SnapshotBuilder.swift).
 
 이름을 그룹 키에 추가하지 않는다. 모든 그룹을 하나의 배열로 반환한다.
 
@@ -861,45 +418,7 @@ git commit -m "feat: group and sort work units"
 
 - [x] **Step 1: 한 번의 refresh가 snapshot을 교체하는 테스트 작성**
 
-```swift
-@Suite("MonitorModel")
-struct MonitorModelTests {
- @Test @MainActor func refreshPublishesOneCoherentSnapshot() async throws {
-  let process = ProcessSample(
-    id: .init(pid: 1, startTime: 1),
-    parentID: 0,
-    name: "editor",
-    path: "/Applications/Editor.app/Contents/MacOS/Editor",
-    bundle: .init(id: "com.example.editor", displayName: "Editor", path: "/Applications/Editor.app"),
-    physicalFootprintBytes: 100,
-    residentSizeBytes: 200,
-    cpuPercent: 3,
-    threadCount: 4,
-    architecture: "arm64"
-  )
-  let raw = RawMonitorSample(
-    processes: [process],
-    systemMemory: .init(
-      totalPhysicalBytes: 16_000,
-      activeBytes: 8_000,
-      wiredBytes: 2_000,
-      compressedBytes: 1_000
-    ),
-    sampledAt: .now
-  )
-  let defaults = try #require(UserDefaults(suiteName: #function))
-  let model = MonitorModel(defaults: defaults, sample: { raw })
-
-  model.settings.memoryMetric = .residentSize
-  await model.refresh()
-
-  let snapshot = try #require(model.snapshot)
-  #expect(snapshot.metric == .residentSize)
-  #expect(snapshot.chart.denominatorBytes == 200)
-  #expect(model.visibleGroups.first?.memoryBytes(for: .residentSize) == 200)
- }
-}
-```
+현재 구현: [`RAMMonitorTests/MonitorModelTests.swift`](../RAMMonitorTests/MonitorModelTests.swift).
 
 - [x] **Step 2: 설정 기본값과 저장 왕복 테스트 작성**
 
@@ -917,20 +436,7 @@ Expected: `MonitorModel`을 찾지 못해 compile failure.
 
 - [x] **Step 4: model 구현**
 
-```swift
-typealias SampleProvider = @Sendable () async throws -> RawMonitorSample
-
-@Observable
-@MainActor
-final class MonitorModel {
-  init(defaults: UserDefaults = .standard)
-  init(defaults: UserDefaults, sample: @escaping SampleProvider)
-
-  func start()
-  func stop()
-  func refresh() async
-}
-```
+현재 구현: [`RAMMonitor/ViewModels/MonitorModel.swift`](../RAMMonitor/ViewModels/MonitorModel.swift).
 
 기본 initializer는 하나의 `ProcessSampler` 인스턴스를 closure에 캡처한다. `start()`는 기존 task를 취소한 뒤 `refresh → sleep` 순서로 반복한다. 갱신 실패 시 마지막 snapshot을 유지한다.
 
@@ -975,16 +481,7 @@ git commit -m "feat: add monitor refresh state"
 
 - [x] **Step 1: UI smoke test 작성**
 
-```swift
-func testMainWindowHasChartListAndSearch() throws {
-  let app = XCUIApplication()
-  app.launch()
-
-  XCTAssertTrue(app.otherElements["memory-pie-chart"].waitForExistence(timeout: 3))
-  XCTAssertTrue(app.otherElements["work-unit-list"].waitForExistence(timeout: 5))
-  XCTAssertTrue(app.searchFields["Search work units"].exists)
-}
-```
+현재 구현: [`RAMMonitorUITests/RAMMonitorUITests.swift`](../RAMMonitorUITests/RAMMonitorUITests.swift).
 
 - [x] **Step 2: UI test 실패 확인**
 
@@ -1002,17 +499,7 @@ Expected: accessibility identifier를 찾지 못해 test failure.
 
 - [x] **Step 4: `SectorMark`와 범례 구현**
 
-```swift
-Chart(chart.slices) { slice in
-  SectorMark(
-    angle: .value("Bytes", slice.bytes),
-    innerRadius: .ratio(0.58),
-    angularInset: 1
-  )
-  .foregroundStyle(by: .value("Work unit", slice.label))
-}
-.accessibilityIdentifier("memory-pie-chart")
-```
+현재 구현: [`RAMMonitor/Views/MemoryPieChart.swift`](../RAMMonitor/Views/MemoryPieChart.swift).
 
 중앙 측정 합계, top 8 범례, Other, 별도 물리 RAM 용량과 hover 정보를 [`interface.md`](interface.md)대로 표시한다.
 
@@ -1064,30 +551,15 @@ git commit -m "feat: add RAM monitor dashboard"
 
 - [x] **Step 2: 설정 화면 구현**
 
-```swift
-Settings {
-  SettingsView(model: model)
-}
-```
+현재 구현: [`RAMMonitor/RAMMonitorApp.swift`](../RAMMonitor/RAMMonitorApp.swift).
 
 General에는 RAM mode, 1/2/3/5/10초, decimal/binary, RAM/CPU/name 기본 정렬, Launch at Login을 둔다. Columns에는 Threads/PID/Processes/Architecture만 둔다.
 
 - [x] **Step 3: 로그인 시 실행 실패 복구 구현**
 
-```swift
-do {
-  if enabled {
-    try SMAppService.mainApp.register()
-  } else {
-    try SMAppService.mainApp.unregister()
-  }
-  model.settings.launchAtLogin = enabled
-} catch {
-  launchAtLoginError = error.localizedDescription
-}
-```
+현재 구현: [`RAMMonitor/Views/SettingsView.swift`](../RAMMonitor/Views/SettingsView.swift).
 
-실패하면 저장값을 바꾸지 않고 오류를 설정 화면에 표시한다.
+등록·해제 뒤 OS 상태를 다시 읽고 실패는 설정 화면에 표시한다. 현재 로그인 항목 계약은 [`interface.md`](interface.md#설정)를 따른다.
 
 - [x] **Step 4: 전체 테스트와 수동 재실행 확인**
 
@@ -1202,8 +674,8 @@ Expected: `arm64 x86_64`, codesign 성공, DMG verify 성공.
 GitHub Release의 실제 SHA-256을 사용해 `Casks/ram-monitor.rb`를 생성하고 다음 명령으로 검사한다.
 
 ```bash
-brew audit --cask --tap logone72/tap ram-monitor
-brew install --cask logone72/tap/ram-monitor
+brew audit --cask --tap logone72/homebrew-tap ram-monitor
+brew install --cask logone72/homebrew-tap/ram-monitor
 ```
 
 Expected: audit 통과, `/Applications/RAM Monitor.app` 설치.

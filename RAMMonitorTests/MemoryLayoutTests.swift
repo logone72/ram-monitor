@@ -68,7 +68,7 @@ struct MemoryLayoutTests {
     let chart = MemoryChart(
       denominatorBytes: 900,
       slices: (0..<9).map {
-        ChartSlice(id: "group:\($0)", label: "Work unit \($0)", bytes: 100, kind: .group)
+        ChartSlice(id: .group("\($0)"), label: "Work unit \($0)", bytes: 100)
       })
     let view = NSHostingView(
       rootView: MemoryPieChart(

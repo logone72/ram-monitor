@@ -81,6 +81,8 @@ make verify
 - `release-check`: 배포 스크립트 Bash 문법 검사
 - `build`: macOS 앱 빌드
 - `test`: unit·UI test 실행 및 code coverage 수집
+- `test-unit`: 키보드·마우스 제어 없이 단위·실제 수집 통합 테스트 실행
+- `test-ui`: 고정 샘플을 사용하는 UI 회귀 테스트 실행(마우스·키보드 사용)
 - `analyze`: Xcode 정적 분석
 - `check`: whitespace, 포맷, lint, 배포 스크립트 검사
 - `verify`: doctor, check, build, test, analyze 전체 실행

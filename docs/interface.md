@@ -74,7 +74,7 @@
 | `refreshInterval` | 1 / 2 / 3 / 5 / 10초 | `2` |
 | `numberFormat` | Decimal / Binary | `decimal` |
 | `defaultSortOrder` | RAM / CPU / Name | `memory` |
-| `launchAtLogin` | 켜짐 / 꺼짐 | `false` |
+| 로그인 시 실행 | 켜짐 / 꺼짐 · 승인 필요 안내 | OS 등록 상태 |
 
 ### Columns
 
@@ -85,7 +85,9 @@
 | `showProcessCountColumn` | `false` |
 | `showArchitectureColumn` | `false` |
 
-CPU와 RAM 열은 끌 수 없다. 설정은 `UserDefaults`에 저장하고 로그인 시 실행은 `SMAppService.mainApp`으로 등록한다.
+CPU와 RAM 열은 끌 수 없다. 화면 설정은 `UserDefaults`에 저장한다. 로그인 시 실행은 `SMAppService.mainApp.status`가 기준이며 별도 Boolean을 저장하지 않는다. 이전 버전의 `launchAtLogin` 저장값은 무시하고 자동 재등록하지 않는다.
+
+설정 화면을 열거나 앱이 다시 활성화될 때, 등록·해제 성공 또는 실패 후 OS 상태를 다시 읽는다. `.enabled`만 켜짐으로 표시한다. `.requiresApproval`은 꺼짐과 승인 필요 안내를 함께 표시하고 Login Items 설정 열기와 대기 등록 취소를 제공한다. 이미 승인 대기 중이면 중복 등록하지 않는다. `.notFound`는 설치본 확인 안내를 표시하며 등록·해제 오류는 사용자에게 알린다.
 
 ## 상태와 오류 표시
 

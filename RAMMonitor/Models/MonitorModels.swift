@@ -61,16 +61,22 @@ struct ProcessGroup: Identifiable, Sendable {
   }
 }
 
-enum ChartSliceKind: Equatable, Sendable {
-  case group
-  case other
-}
-
 struct ChartSlice: Identifiable, Sendable {
-  let id: String
+  enum Identity: Hashable, Sendable {
+    case group(String)
+    case other
+
+    var accessibilityID: String {
+      switch self {
+      case .group(let groupID): "group:\(groupID)"
+      case .other: "other"
+      }
+    }
+  }
+
+  let id: Identity
   let label: String
   let bytes: UInt64
-  let kind: ChartSliceKind
 }
 
 struct MemoryChart: Sendable {
@@ -80,9 +86,6 @@ struct MemoryChart: Sendable {
 
 struct SystemMemorySample: Sendable {
   let totalPhysicalBytes: UInt64
-  let activeBytes: UInt64
-  let wiredBytes: UInt64
-  let compressedBytes: UInt64
 }
 
 struct RawMonitorSample: Sendable {
@@ -100,11 +103,12 @@ struct MonitorSnapshot: Sendable {
 }
 
 struct MonitorSettings: Sendable, Equatable {
+  static let refreshIntervals: [TimeInterval] = [1, 2, 3, 5, 10]
+
   var memoryMetric: MemoryMetric = .physicalFootprint
   var refreshInterval: TimeInterval = 2
   var useBinaryUnits = false
   var defaultSortOrder: SortOrder = .memory
-  var launchAtLogin = false
   var showThreadsColumn = true
   var showPIDColumn = false
   var showProcessCountColumn = false

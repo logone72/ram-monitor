@@ -1,6 +1,6 @@
 # 구현 작업
 
-이 문서가 구현 진행도의 기준이다. 세부 절차와 코드는 [`implementation.md`](implementation.md), 완료 판정은 [`quality.md`](quality.md)를 따른다.
+이 문서가 구현 진행도의 기준이다. 초기 구현 절차는 [`implementation.md`](implementation.md)에 기록하고, 현재 코드는 연결된 실제 파일, 완료 판정은 [`quality.md`](quality.md)를 따른다.
 
 ## 현재 상태
 
@@ -191,3 +191,53 @@ Git 태그·공개 Release·Tap 게시는 수행하지 않았다. cask URL은 �
 - UI 테스트는 충분한 화면에서 기존 무스크롤 assertion을 유지한다. 작은 화면에서도 창이 가용 공간을 충분히 활용해야 하며, 스크롤 후 하단 요약이 접근 가능해야 한다. 실제 화면·창·뷰포트 크기와 스크롤 전후 좌표를 로그에 남긴다.
 - 로컬 단위 테스트 32개(높이 테스트는 3개 입력), 관련 UI 테스트 2개, `make check`, `make analyze` 통과. 전체 UI 테스트·원격 CI 재실행·커밋·push·배포는 수행하지 않았다. 시스템 화면 설정과 CLT 선택도 변경하지 않았다.
 - 변경 파일: `RAMMonitor/Views/SummaryScrollConfiguration.swift`, `RAMMonitorTests/MemoryLayoutTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/interface.md`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`.
+
+## 출시 전 코드 품질 정리 (2026-09-17)
+
+- [x] 사용하지 않는 active/wired/compressed 수집·host port 호출 제거, 물리 RAM 용량과 캐시 경계 검사 유지
+- [x] 헤더·행의 열 너비와 간격을 `WorkListLayout`으로 공유
+- [x] 갱신 간격 목록과 차트 안쪽 반지름을 각각 단일 정의로 통합
+- [x] 차트 식별자를 그룹 ID / Other의 타입으로 통합, 기존 접근성 ID와 선택·해제 계약 유지
+- [x] 초기 계획의 작업 이력·판정 기준 보존, 복사된 구현·설정 예시를 실제 파일 링크로 대체
+- [x] 로그인 항목의 저장 Boolean 제거, OS 상태 조회·승인 대기 안내·재활성화 동기화 구현
+- [x] Debug 전용 고정 UI 샘플과 설정 suite 도입, 기존 SampleProvider와 실제 수집 통합 테스트 유지
+- [x] Standards / Spec 독립 리뷰 및 지적 수정 후 재검토
+- [x] 입력 제어가 필요한 UI 15개 재실행 및 최종 `make verify`
+
+검증: 최종 `make verify` 통과. 환경·포맷·lint·whitespace 검사, 빌드, 단위·통합 37개, UI 15개, coverage 수집, Xcode Analyze를 한 번의 실행에서 모두 통과했다. `make test-unit`과 `make test-ui`로 검사 범위를 선택할 수 있고, 기존 전체 검증 게이트는 유지한다. 실제 로그인 항목은 변경하지 않았으며 테스트는 등록·상태 조회 closure를 사용한다.
+
+UI 재검증에서는 테스트 실행 조건 두 곳을 보완했다. 초기 메인 창 미표시는 수정 전 기준 커밋에서도 재현되어, UI 테스트 실행 인자의 값을 명시하고 이전 창 복원을 제외했다. 빈 영역 검사는 검색어 `Work unit 24`가 `Work unit. 4`로 주입된 기록을 확인한 뒤 문자별 입력과 검색어 assertion을 추가했다. 검색 결과의 행을 선택해 검색이 유지된 상태에서 실제 빈 영역·펼침 버튼의 선택 해제를 검사한다. 기존 해제 assertion은 유지했으며 앱 동작 코드나 시스템 CLT·권한 설정은 변경하지 않았다. 진단용 임시 빌드는 정리했고 최종 실행 로그는 `/private/tmp/ram-monitor-refactor-verified.log`에 남겼다.
+
+리뷰 수정본의 Release 빌드도 통과했다. Debug 앱에는 UI 테스트 전용 suite 식별자가 있고 Release 바이너리에는 없음을 확인했다. DMG 재생성·설치·원격 CI 실행은 이번 작업에 포함하지 않았다.
+
+리뷰: Standards 미해결 0건. Spec의 앱 재활성화 시 로그인 상태 재조회 누락과 RAM 사양의 오래된 VM 수집 문구 2건을 수정했고 재검토에서 미해결 0건이다. 재활성화 알림 테스트는 기존 구현에서 실패하고 수정 후 통과했다. 단위·UI 명령을 같은 Make 호출로 실행해도 한쪽이 생략되지 않도록 명령 연결도 확인했다.
+
+변경 파일:
+
+- `AGENTS.md`
+- `Makefile`
+- `RAMMonitor/Models/MonitorModels.swift`
+- `RAMMonitor/RAMMonitorApp.swift`
+- `RAMMonitor/Services/ProcessSampler.swift`
+- `RAMMonitor/Services/SnapshotBuilder.swift`
+- `RAMMonitor/UITestSample.swift`
+- `RAMMonitor/ViewModels/MonitorModel.swift`
+- `RAMMonitor/Views/MemoryPieChart.swift`
+- `RAMMonitor/Views/MonitorView.swift`
+- `RAMMonitor/Views/ProcessGroupRow.swift`
+- `RAMMonitor/Views/SettingsView.swift`
+- `RAMMonitorTests/LoginItemTests.swift`
+- `RAMMonitorTests/MemoryLayoutTests.swift`
+- `RAMMonitorTests/MonitorModelTests.swift`
+- `RAMMonitorTests/ProcessSamplerIntegrationTests.swift`
+- `RAMMonitorTests/SnapshotBuilderTests.swift`
+- `RAMMonitorUITests/RAMMonitorUITests.swift`
+- `docs/architecture.md`
+- `docs/harness.md`
+- `docs/implementation.md`
+- `docs/index.md`
+- `docs/interface.md`
+- `docs/memory.md`
+- `docs/quality.md`
+- `docs/system-api.md`
+- `docs/tasks.md`

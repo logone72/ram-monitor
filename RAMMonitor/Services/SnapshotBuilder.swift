@@ -76,11 +76,11 @@ enum SnapshotBuilder {
     topSliceCount: Int
   ) -> [ChartSlice] {
     var slices = groups.prefix(topSliceCount).map { group, bytes in
-      ChartSlice(id: "group:\(group.id)", label: group.displayName, bytes: bytes, kind: .group)
+      ChartSlice(id: .group(group.id), label: group.displayName, bytes: bytes)
     }
     let remainder = groups.dropFirst(min(topSliceCount, groups.count))
     if let otherBytes = sum(remainder.map(\.1)), !remainder.isEmpty {
-      slices.append(ChartSlice(id: "other", label: "Other", bytes: otherBytes, kind: .other))
+      slices.append(ChartSlice(id: .other, label: "Other", bytes: otherBytes))
     }
     return slices
   }

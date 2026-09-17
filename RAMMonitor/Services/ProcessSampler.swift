@@ -4,7 +4,6 @@ import Foundation
 enum SamplingError: Error, Sendable {
   case processEnumerationFailed(errno: Int32)
   case invalidPIDBufferSize
-  case systemMemoryFailed(code: kern_return_t)
   case invalidSystemMemoryValue
 }
 
@@ -225,45 +224,7 @@ actor ProcessSampler {
   private func systemMemory() throws -> SystemMemorySample {
     let total = ProcessInfo.processInfo.physicalMemory
     guard total > 0 else { throw SamplingError.invalidSystemMemoryValue }
-    let host = mach_host_self()
-    defer { mach_port_deallocate(mach_task_self_, host) }
-
-    var pageSize: vm_size_t = 0
-    let pageResult = host_page_size(host, &pageSize)
-    guard pageResult == KERN_SUCCESS else {
-      throw SamplingError.systemMemoryFailed(code: pageResult)
-    }
-    guard pageSize > 0 else { throw SamplingError.invalidSystemMemoryValue }
-
-    var stats = vm_statistics64_data_t()
-    var count = mach_msg_type_number_t(
-      MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size
-    )
-    let statsResult = withUnsafeMutablePointer(to: &stats) { pointer in
-      pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-        host_statistics64(host, HOST_VM_INFO64, $0, &count)
-      }
-    }
-    guard statsResult == KERN_SUCCESS else {
-      throw SamplingError.systemMemoryFailed(code: statsResult)
-    }
-    guard
-      let active = checkedBytes(pages: stats.active_count, pageSize: pageSize),
-      let wired = checkedBytes(pages: stats.wire_count, pageSize: pageSize),
-      let compressed = checkedBytes(pages: stats.compressor_page_count, pageSize: pageSize)
-    else { throw SamplingError.invalidSystemMemoryValue }
-
-    return SystemMemorySample(
-      totalPhysicalBytes: total,
-      activeBytes: active,
-      wiredBytes: wired,
-      compressedBytes: compressed
-    )
-  }
-
-  private func checkedBytes(pages: natural_t, pageSize: vm_size_t) -> UInt64? {
-    let result = UInt64(pages).multipliedReportingOverflow(by: UInt64(pageSize))
-    return result.overflow ? nil : result.partialValue
+    return SystemMemorySample(totalPhysicalBytes: total)
   }
 
   static func resolveBundle(

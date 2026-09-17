@@ -6,10 +6,20 @@ import Testing
 
 @Suite("SnapshotBuilder")
 struct SnapshotBuilderTests {
+  @Test func chartIdentityKeepsOtherDistinctFromAGroupNamedOther() {
+    let raw = Fixtures.raw(processes: [
+      .sample(id: 1, group: "other", footprint: 200),
+      .sample(id: 2, group: "background", footprint: 100),
+    ])
+    let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint, topSliceCount: 1)
+
+    #expect(result.chart.slices.map(\.id) == [.group("other"), .other])
+    #expect(result.chart.slices.map { $0.id.accessibilityID } == ["group:other", "other"])
+  }
+
   @Test func physicalChartUsesMeasuredTotalAndKeepsPhysicalRAMSeparate() {
     let raw = Fixtures.raw(
       physicalRAM: 16_000,
-      systemUsed: 12_000,
       processes: [
         .sample(id: 1, group: "browser", footprint: 5_000, resident: 7_000),
         .sample(id: 2, group: "editor", footprint: 3_000, resident: 4_000),
@@ -28,7 +38,6 @@ struct SnapshotBuilderTests {
   func physicalChartKeepsTheSameValuesAsTheList(physicalRAM: UInt64) {
     let raw = Fixtures.raw(
       physicalRAM: physicalRAM,
-      systemUsed: 600,
       processes: [
         .sample(id: 1, group: "browser", footprint: 500),
         .sample(id: 2, group: "editor", footprint: 400),
@@ -38,8 +47,8 @@ struct SnapshotBuilderTests {
     let result = SnapshotBuilder.build(raw: raw, metric: .physicalFootprint)
 
     #expect(result.chart.denominatorBytes == 900)
-    #expect(result.chart.slices.first { $0.id == "group:browser" }?.bytes == 500)
-    #expect(result.chart.slices.first { $0.id == "group:editor" }?.bytes == 400)
+    #expect(result.chart.slices.first { $0.id == .group("browser") }?.bytes == 500)
+    #expect(result.chart.slices.first { $0.id == .group("editor") }?.bytes == 400)
     #expect(result.groups.compactMap { $0.totalPhysicalFootprintBytes }.reduce(0, +) == 900)
     #expect(checkedSum(result.chart.slices.map(\.bytes)) == 900)
   }
@@ -50,8 +59,8 @@ struct SnapshotBuilderTests {
     let result = SnapshotBuilder.build(raw: raw, metric: metric, topSliceCount: 8)
 
     #expect(result.chart.denominatorBytes == 1_000)
-    #expect(result.chart.slices.filter { $0.kind == .group }.count == 8)
-    #expect(result.chart.slices.first { $0.kind == .other }?.bytes == 200)
+    #expect(result.chart.slices.filter { $0.id != .other }.count == 8)
+    #expect(result.chart.slices.first { $0.id == .other }?.bytes == 200)
     #expect(result.chart.slices.count == 9)
     #expect(checkedSum(result.chart.slices.map(\.bytes)) == 1_000)
   }
@@ -80,7 +89,6 @@ struct SnapshotBuilderTests {
   @Test func chartAggregationOverflowCannotBreakItsDenominator() {
     let raw = Fixtures.raw(
       physicalRAM: 100,
-      systemUsed: 80,
       processes: [
         .sample(id: 1, group: "a", footprint: .max, resident: .max),
         .sample(id: 2, group: "b", footprint: .max, resident: .max),
@@ -229,12 +237,12 @@ struct SnapshotBuilderTests {
       physical.filtered(searchText: "", sortOrder: .memory, ascending: false).map(\.id)
         == ["footprint-heavy", "resident-heavy"]
     )
-    #expect(physical.chart.slices.first { $0.kind == .group }?.id == "group:footprint-heavy")
+    #expect(physical.chart.slices.first { $0.id != .other }?.id == .group("footprint-heavy"))
     #expect(
       resident.filtered(searchText: "", sortOrder: .memory, ascending: false).map(\.id)
         == ["resident-heavy", "footprint-heavy"]
     )
-    #expect(resident.chart.slices.first { $0.kind == .group }?.id == "group:resident-heavy")
+    #expect(resident.chart.slices.first { $0.id != .other }?.id == .group("resident-heavy"))
   }
 }
 
@@ -251,17 +259,11 @@ private func checkedSum(_ values: [UInt64]) -> UInt64? {
 private enum Fixtures {
   static func raw(
     physicalRAM: UInt64 = 16_000,
-    systemUsed: UInt64 = 12_000,
     processes: [ProcessSample]
   ) -> RawMonitorSample {
     RawMonitorSample(
       processes: processes,
-      systemMemory: SystemMemorySample(
-        totalPhysicalBytes: physicalRAM,
-        activeBytes: systemUsed,
-        wiredBytes: 0,
-        compressedBytes: 0
-      ),
+      systemMemory: SystemMemorySample(totalPhysicalBytes: physicalRAM),
       sampledAt: Date(timeIntervalSince1970: 1)
     )
   }

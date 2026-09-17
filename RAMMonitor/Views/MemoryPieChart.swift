@@ -2,16 +2,17 @@ import Charts
 import SwiftUI
 
 struct MemoryPieChart: View {
+  private static let innerRadiusRatio = 0.58
   let chart: MemoryChart
   let metric: MemoryMetric
   let totalPhysicalBytes: UInt64?
   let useBinaryUnits: Bool
   let selectedGroupID: String?
-  let selectedSliceID: String?
-  let onSelectSlice: (String?) -> Void
+  let selectedSliceID: ChartSlice.ID?
+  let onSelectSlice: (ChartSlice.ID?) -> Void
 
-  @State private var hoveredSliceID: String?
-  @State private var suppressedHoverSliceID: String?
+  @State private var hoveredSliceID: ChartSlice.ID?
+  @State private var suppressedHoverSliceID: ChartSlice.ID?
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.isSearching) private var isSearching
 
@@ -24,7 +25,7 @@ struct MemoryPieChart: View {
         Chart(Array(chart.slices.enumerated()), id: \.element.id) { index, slice in
           SectorMark(
             angle: .value("Bytes", slice.bytes),
-            innerRadius: .ratio(0.58),
+            innerRadius: .ratio(Self.innerRadiusRatio),
             angularInset: 1
           )
           .foregroundStyle(color(for: slice, at: index))
@@ -96,7 +97,7 @@ struct MemoryPieChart: View {
           .accessibilityLabel(slice.label)
           .accessibilityValue(accessibilityValue(for: slice))
           .accessibilityAddTraits(selectedSliceID == slice.id ? .isSelected : [])
-          .accessibilityIdentifier("chart-legend:\(slice.id)")
+          .accessibilityIdentifier("chart-legend:\(slice.id.accessibilityID)")
           .onHover { hovering in
             updateHover(hovering ? slice.id : nil)
           }
@@ -131,13 +132,13 @@ struct MemoryPieChart: View {
     }
   }
 
-  private func selectSlice(_ id: String?) {
+  private func selectSlice(_ id: ChartSlice.ID?) {
     suppressedHoverSliceID = id
     hoveredSliceID = nil
     onSelectSlice(id)
   }
 
-  private func updateHover(_ id: String?) {
+  private func updateHover(_ id: ChartSlice.ID?) {
     if id != suppressedHoverSliceID { suppressedHoverSliceID = nil }
     hoveredSliceID = id == suppressedHoverSliceID ? nil : id
   }
@@ -169,14 +170,14 @@ struct MemoryPieChart: View {
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: activeSlice?.id)
   }
 
-  private func sliceID(at location: CGPoint, in size: CGSize) -> String? {
+  private func sliceID(at location: CGPoint, in size: CGSize) -> ChartSlice.ID? {
     guard chart.denominatorBytes > 0 else { return nil }
     let center = CGPoint(x: size.width / 2, y: size.height / 2)
     let horizontalOffset = location.x - center.x
     let verticalOffset = location.y - center.y
     let radius = hypot(horizontalOffset, verticalOffset)
     let outerRadius = min(size.width, size.height) / 2
-    guard radius >= outerRadius * 0.58, radius <= outerRadius else { return nil }
+    guard radius >= outerRadius * Self.innerRadiusRatio, radius <= outerRadius else { return nil }
 
     let angle =
       (atan2(horizontalOffset, -verticalOffset) + 2 * .pi)
@@ -201,7 +202,7 @@ struct MemoryPieChart: View {
   }
 
   private func color(for slice: ChartSlice, at index: Int) -> Color {
-    switch slice.kind {
+    switch slice.id {
     case .other: .secondary
     case .group: Self.groupColors[index % Self.groupColors.count]
     }

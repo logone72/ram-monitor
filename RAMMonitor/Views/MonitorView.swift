@@ -121,30 +121,30 @@ struct MonitorView: View {
   }
 
   private var columnHeaders: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: WorkListLayout.spacing) {
       sortButton("Work unit", order: .name)
         .frame(maxWidth: .infinity, alignment: .leading)
       sortButton("RAM", order: .memory)
-        .frame(width: 90, alignment: .trailing)
+        .frame(width: WorkListLayout.memoryWidth, alignment: .trailing)
       sortButton("CPU", order: .cpu)
-        .frame(width: 64, alignment: .trailing)
+        .frame(width: WorkListLayout.cpuWidth, alignment: .trailing)
       if model.settings.showThreadsColumn {
-        Text("Threads").frame(width: 64, alignment: .trailing)
+        Text("Threads").frame(width: WorkListLayout.threadsWidth, alignment: .trailing)
       }
       if model.settings.showPIDColumn {
-        Text("PID").frame(width: 64, alignment: .trailing)
+        Text("PID").frame(width: WorkListLayout.pidWidth, alignment: .trailing)
       }
       if model.settings.showProcessCountColumn {
         sortButton("Processes", order: .processCount)
-          .frame(width: 76, alignment: .trailing)
+          .frame(width: WorkListLayout.processCountWidth, alignment: .trailing)
       }
       if model.settings.showArchitectureColumn {
-        Text("Architecture").frame(width: 88, alignment: .trailing)
+        Text("Architecture").frame(width: WorkListLayout.architectureWidth, alignment: .trailing)
       }
     }
     .font(.caption.weight(.semibold))
     .foregroundStyle(.secondary)
-    .padding(.horizontal, 12)
+    .padding(.horizontal, WorkListLayout.horizontalPadding)
     .frame(height: 36)
   }
 

@@ -12,6 +12,7 @@ struct ProcessSamplerIntegrationTests {
     let currentPID = ProcessInfo.processInfo.processIdentifier
     let current = try #require(raw.processes.first { $0.id.pid == currentPID })
 
+    #expect(raw.systemMemory.totalPhysicalBytes == ProcessInfo.processInfo.physicalMemory)
     #expect(raw.systemMemory.totalPhysicalBytes > 0)
     #expect(current.physicalFootprintBytes != nil || current.residentSizeBytes != nil)
     #expect(current.bundle?.id == "com.roegankim.RAMMonitor")
@@ -138,28 +139,16 @@ struct ProcessSamplerIntegrationTests {
     )
   }
 
-  @Test func repeatedSamplingDoesNotLeakHostSendRightsOrRetainStaleState() async throws {
-    let before = try hostSendRightReferences()
+  @Test func repeatedSamplingDoesNotRetainStaleState() async throws {
     let sampler = ProcessSampler()
     var last = try await sampler.sample()
     for _ in 0..<4 {
       last = try await sampler.sample()
     }
-    let after = try hostSendRightReferences()
     let retained = await sampler.retainedStateCounts()
 
-    #expect(after <= before + 1)
     #expect(retained.cpu <= last.processes.count)
     #expect(retained.bundles <= Set(last.processes.map(\.path)).count)
     #expect(retained.processes <= last.processes.count)
   }
-}
-
-private func hostSendRightReferences() throws -> mach_port_urefs_t {
-  let host = mach_host_self()
-  defer { mach_port_deallocate(mach_task_self_, host) }
-  var references: mach_port_urefs_t = 0
-  let result = mach_port_get_refs(mach_task_self_, host, MACH_PORT_RIGHT_SEND, &references)
-  guard result == KERN_SUCCESS else { throw SamplingError.systemMemoryFailed(code: result) }
-  return references
 }
