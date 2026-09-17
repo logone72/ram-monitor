@@ -77,9 +77,11 @@ struct SettingsView: View {
   }
 
   private var launchAtLoginBinding: Binding<Bool> {
+    // Keep the closure: passing the method directly can crash Swift 6.3 IRGen.
+    // https://github.com/swiftlang/swift/issues/82491
     Binding(
       get: { loginItemStatus == .enabled },
-      set: setLaunchAtLogin
+      set: { enabled in setLaunchAtLogin(enabled) }
     )
   }
 

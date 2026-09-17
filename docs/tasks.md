@@ -241,3 +241,11 @@ UI 재검증에서는 테스트 실행 조건 두 곳을 보완했다. 초기 �
 - `docs/quality.md`
 - `docs/system-api.md`
 - `docs/tasks.md`
+
+### 후속: CI Binding 컴파일러 크래시 대응
+
+- `5d8ed0c`의 CI `35191330847`은 포맷·lint 이후 `SettingsView.swift`의 함수 변환 코드 생성 중 Swift 6.3.3 컴파일러가 크래시했다. 직전 `3c54877`은 같은 Xcode 26.6 / Swift 6.3.3에서 전체 검증을 통과했다.
+- `launchAtLoginBinding`의 setter를 메서드 직접 전달에서 명시적 클로저 호출로 변경했다. 로그인 등록·해제 로직과 OS 상태 조회, CI·Release 도구 버전, 시스템 CLT 설정은 유지한다. 동일 패턴의 [Swift 이슈 #82491](https://github.com/swiftlang/swift/issues/82491)를 코드 주석에 남겼다.
+- 로컬 Swift 6.4에서 `make check build test-unit analyze` 통과: 빌드, 단위·통합 37개, 포맷·lint·whitespace·배포 스크립트 구문 검사, 정적 분석. UI 테스트는 이번 수정 후 재실행하지 않았다.
+- 컴파일러 크래시는 기존 CI 빌드 단계로 검증한다. 로컬에 Swift 6.3.3이 없어 수정 전후 재현을 확인하지 못했으므로, 원격 CI 통과 전에는 해결 확정으로 간주하지 않는다. 커밋·push·배포는 수행하지 않았다.
+- 변경 파일: `RAMMonitor/Views/SettingsView.swift`, `docs/index.md`, `docs/tasks.md`.
