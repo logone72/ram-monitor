@@ -3,17 +3,33 @@ import XCTest
 
 final class RAMMonitorUITests: XCTestCase {
   @MainActor
-  func testInitialSummaryFitsWithoutScrolling() throws {
+  func testInitialSummaryFitsAvailableScreen() throws {
     let app = XCUIApplication()
     app.launchArguments = ["-AppleShowScrollBars", "Always", "-refreshInterval", "10"]
     app.launch()
     XCTAssertTrue(app.buttons["chart-legend:other"].waitForExistence(timeout: 5))
     let scroll = app.scrollViews["memory-summary-scroll"]
     let summary = app.descendants(matching: .any)["physical-ram-summary"]
+    let window = app.windows["RAM Monitor"]
+    // Accessibility uses a top-left origin; NSScreen uses AppKit's bottom-left origin.
+    let primaryScreen = try XCTUnwrap(NSScreen.screens.first)
+    let windowCenter = NSPoint(
+      x: window.frame.midX, y: primaryScreen.frame.maxY - window.frame.midY)
+    let screen = try XCTUnwrap(NSScreen.screens.first { $0.frame.contains(windowCenter) })
+    let chromeHeight = window.frame.height - scroll.frame.height
+    let availableContentHeight = screen.visibleFrame.height - chromeHeight
+    let requiredContentHeight: CGFloat = 642
+    let geometry = "screen=\(screen.visibleFrame), window=\(window.frame), viewport=\(scroll.frame)"
+    print("Initial summary geometry: \(geometry)")
+    XCTAssertGreaterThanOrEqual(
+      scroll.frame.height, min(requiredContentHeight, availableContentHeight) - 1, geometry)
     let initialPosition = summary.frame.minY
     scroll.scroll(byDeltaX: 0, deltaY: -300)
-    XCTAssertEqual(summary.frame.minY, initialPosition, accuracy: 0.5)
-    XCTAssertTrue(summary.isHittable)
+    print("Initial summary scroll: before=\(initialPosition), after=\(summary.frame.minY)")
+    if availableContentHeight >= requiredContentHeight {
+      XCTAssertEqual(summary.frame.minY, initialPosition, accuracy: 0.5, geometry)
+    }
+    XCTAssertTrue(summary.isHittable, geometry)
   }
 
   @MainActor

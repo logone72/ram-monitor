@@ -181,3 +181,13 @@ Git 태그·공개 Release·Tap 게시는 수행하지 않았다. cask URL은 �
 - 초기 보정에 `window.contentLayoutRect`로 측정한 실제 제목 표시줄·툴바 높이를 사용해 콘텐츠 642pt를 확보한다. 화면의 가용 높이 제한과 이후 수동 축소는 유지한다. 기존 UI assertion은 완화하지 않았다.
 - 수정 후 로컬 단위 테스트 31개, 초기 높이·작은 창 UI 테스트 2개, `make check`, `make analyze` 통과. 전체 UI 테스트와 원격 CI 재실행은 수행하지 않았다. 커밋·push·배포 및 설치된 앱·DMG 교체도 하지 않았다.
 - 변경 파일: `RAMMonitor/RAMMonitorApp.swift`, `RAMMonitor/Views/SummaryScrollConfiguration.swift`, `RAMMonitorTests/MemoryLayoutTests.swift`, `docs/interface.md`, `docs/index.md`, `docs/tasks.md`.
+
+### 후속: 화면 크기에 독립적인 초기 높이 검증
+
+- `0f9fbee`의 원격 CI `35168243866`에서는 여전히 초기 높이 단위·UI 테스트가 실패했다. 앞선 로컬 통과만으로 원격 문제가 해결된 것은 아니었다.
+- 실제 높이 보정 함수에 가용 높이를 전달하는 재현 테스트에서 1,000pt는 통과하고 694pt는 원격과 동일한 `628 < 642`로 실패했다. 앱은 화면 높이를 상한으로 두지만 테스트는 무조건 콘텐츠 642pt를 요구하는 모순을 확인했다. 원격 화면 크기 자체는 당시 로그에 없어 아직 확정하지 않았다.
+- 보정 계산·적용 함수를 추출해 단위 테스트에서 직접 호출한다. 무관한 `Task`를 기다리며 보정 완료를 가정하던 방식과 실제 모니터 의존을 제거했다. 앱의 화면 제한·높이 보정 동작은 변경하지 않았다.
+- 단위 테스트는 가용 높이 600·694·1,000pt에서 가능한 콘텐츠 공간 확보와 화면 상한을 검사하고, 반복 보정과 더 큰 복원 창의 크기 유지도 확인한다.
+- UI 테스트는 충분한 화면에서 기존 무스크롤 assertion을 유지한다. 작은 화면에서도 창이 가용 공간을 충분히 활용해야 하며, 스크롤 후 하단 요약이 접근 가능해야 한다. 실제 화면·창·뷰포트 크기와 스크롤 전후 좌표를 로그에 남긴다.
+- 로컬 단위 테스트 32개(높이 테스트는 3개 입력), 관련 UI 테스트 2개, `make check`, `make analyze` 통과. 전체 UI 테스트·원격 CI 재실행·커밋·push·배포는 수행하지 않았다. 시스템 화면 설정과 CLT 선택도 변경하지 않았다.
+- 변경 파일: `RAMMonitor/Views/SummaryScrollConfiguration.swift`, `RAMMonitorTests/MemoryLayoutTests.swift`, `RAMMonitorUITests/RAMMonitorUITests.swift`, `docs/interface.md`, `docs/quality.md`, `docs/index.md`, `docs/tasks.md`.

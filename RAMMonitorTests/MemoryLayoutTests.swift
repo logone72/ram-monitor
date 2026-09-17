@@ -6,21 +6,32 @@ import Testing
 
 @Suite("Memory layout")
 struct MemoryLayoutTests {
-  @Test @MainActor func initialWindowReservesSummarySpaceBelowToolbar() async {
+  @Test(arguments: [CGFloat(600), CGFloat(694), CGFloat(1000)])
+  @MainActor func initialWindowReservesSummarySpaceBelowToolbar(availableHeight: CGFloat) {
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 1000, height: RAMMonitorApp.defaultWindowHeight),
+      contentRect: NSRect(x: 0, y: 0, width: 1000, height: 520),
       styleMask: [.titled, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
     window.toolbar = NSToolbar(identifier: "MemoryLayoutTests.toolbar")
     window.toolbarStyle = .unified
-    let probe = SummaryScrollConfiguration.ScrollViewProbe()
-    window.contentView = probe
-    defer { window.contentView = nil }
-    await Task { @MainActor in }.value
-    #expect(window.contentLayoutRect.height >= RAMMonitorApp.summaryContentHeight)
+    let chromeHeight = window.frame.height - window.contentLayoutRect.height
+    SummaryScrollConfiguration.fitInitialWindow(window, availableHeight: availableHeight)
+    let expectedHeight = min(RAMMonitorApp.summaryContentHeight, availableHeight - chromeHeight)
+    #expect(window.contentLayoutRect.height >= expectedHeight)
+    #expect(window.frame.height <= availableHeight)
 
-    window.setFrame(NSRect(x: 0, y: 0, width: 820, height: 520), display: false)
-    probe.layoutSubtreeIfNeeded()
-    #expect(window.frame.height == 520, "Manual resizing must remain available")
+    let initialFrame = window.frame
+    SummaryScrollConfiguration.fitInitialWindow(window, availableHeight: availableHeight)
+    #expect(window.frame == initialFrame, "Repeated fitting must not keep growing the window")
+
+  }
+
+  @Test @MainActor func initialWindowPreservesLargerRestoredSize() {
+    let window = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 1000, height: 900),
+      styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
+    let initialFrame = window.frame
+    SummaryScrollConfiguration.fitInitialWindow(window, availableHeight: 1000)
+    #expect(window.frame == initialFrame)
   }
 
   @Test @MainActor func onlySummaryUsesOverlayScrollbars() throws {
