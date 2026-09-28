@@ -4,7 +4,7 @@
 
 배포 산출물은 Universal 2 `RAM Monitor.app`을 담은 DMG 하나다.
 
-현재 첫 공개 Release는 없으며, 최신 코드의 DMG 재생성·설치본 최종 확인이 남아 있다. 현재 진행도는 [`tasks.md`](tasks.md)를 따른다.
+[첫 공개 Release 0.1.0](https://github.com/logone72/ram-monitor/releases/tag/v0.1.0)을 게시했다. 개인 Homebrew Tap은 아직 게시하지 않았다. 현재 진행도는 [`tasks.md`](tasks.md)를 따른다.
 
 ```text
 Git tag vX.Y.Z

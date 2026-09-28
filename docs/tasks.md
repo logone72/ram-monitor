@@ -6,7 +6,7 @@
 
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
-- 다음 작업: 최신 코드로 0.1.0 DMG 재생성·검증 → 설치본 사용자 최종 확인 → 별도 승인 후 공개 Release·Tap 배포
+- 다음 작업: 별도 승인 후 personal Tap 배포·설치 검증
 - 마지막 갱신: 2026-09-28
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
@@ -29,10 +29,11 @@
 
 - [x] 사용자가 로컬 앱을 직접 실행하고 주요 동작을 확인한다.
 - [x] 확인된 피드백을 반영한다.
-- [x] 변경 후 `make verify`와 원격 CI를 통과한다 (`7793c9f`).
-- [ ] 최신 코드로 DMG를 재생성하고 검증한다 (기존 DMG 검증 이후 코드 변경 반영).
-- [ ] 생성된 DMG 설치본을 사용자가 최종 확인한다.
-- [ ] 위 단계가 끝난 뒤 공개 GitHub Release와 personal Tap 배포를 진행한다.
+- [x] 변경 후 `make verify`와 원격 CI를 통과한다 (`cce61a0`).
+- [x] 최신 코드 `cce61a0`로 0.1.0 DMG를 재생성하고 검증한다.
+- [x] 생성된 DMG 설치본을 사용자가 최종 확인한다 (0.1.0 정상 동작 확인).
+- [x] 사용자 확인 후 공개 GitHub Release를 게시하고 다운로드를 검증한다.
+- [ ] personal Tap 배포·설치 검증을 진행한다.
 
 ## 전체 완료 조건
 
@@ -260,3 +261,19 @@ UI 재검증에서는 테스트 실행 조건 두 곳을 보완했다. 초기 �
 - [x] 실제 앱의 Resident Size 화면으로 `screenshot.png` 교체 — 측정 프로세스 합계, 별도 물리 RAM 요약, 차트·목록 값 일치 확인
 
 검증: `make check build`, Xcode 프로젝트 구문 검사와 빌드된 앱의 저작권 메타데이터 확인 통과. UI 테스트·DMG 재생성·커밋·push·공개 전환은 수행하지 않았다.
+
+### 최종 로컬 DMG 준비 (2026-09-28)
+
+- 저장소 Public 전환과 `cce61a0`의 [CI 성공](https://github.com/logone72/ram-monitor/actions/runs/36378499871)을 확인했다.
+- `scripts/build-release.sh 0.1.0`으로 기존 로컬 산출물을 재생성했다. Release archive, arm64·x86_64 포함, ad-hoc 서명, DMG 무결성, 읽기 전용 마운트 후 내부 앱 서명, SHA-256 검사를 통과했다.
+- 산출물: `release/RAM-Monitor-0.1.0.dmg` (약 2.5 MB), `SHA256SUMS`, `ram-monitor.rb`.
+- SHA-256: `d1a04bf7a60f7b9a138fe757beff313958215f5050f1908529212734b2a76842`.
+- 설치된 앱은 변경하지 않았다. 사용자 설치·실행 최종 확인과 이후 태그 push·Release 게시는 남아 있다. 공증·Gatekeeper 통과나 Intel Mac 실기 실행을 검증한 것은 아니다.
+
+### 첫 공개 Release 게시 (2026-09-28)
+
+- 사용자 설치본 정상 동작 확인과 게시 승인 후, 검증된 `cce61a0`에 `v0.1.0` 태그를 생성·push했다.
+- [Release 자동화](https://github.com/logone72/ram-monitor/actions/runs/36383422250)가 전체 검증·Universal DMG 빌드·게시를 통과했다.
+- [v0.1.0](https://github.com/logone72/ram-monitor/releases/tag/v0.1.0)에 DMG, `SHA256SUMS`, cask 템플릿을 게시하고 설치·미공증 안내를 추가했다. Tap 자체는 아직 게시하지 않았다.
+- 인증 없이 공개 DMG와 체크섬을 다운로드해 SHA-256, DMG 무결성, 내부 앱 서명과 arm64·x86_64 포함을 검증했다.
+- 공개 DMG SHA-256: `a34a3b9d3c88e8a7038c82f0a4efb8ffd2982a450fae2e6647e6ec6a8977aa3f`. GitHub에서 재빌드한 산출물이며 로컬 DMG와 체크섬이 다르다. 공개 산출물의 실제 UI 실행은 재검증하지 않았다.

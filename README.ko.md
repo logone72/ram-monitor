@@ -10,8 +10,12 @@ RAM Monitor는 서로 연관된 하위 프로세스를 하나의 작업 단위�
 
 - macOS 14 Sonoma 이상
 - Apple Silicon 또는 Intel Mac
-- 개발 시 `/Applications/Xcode.app`에 설치된 전체 Xcode 앱 필요 (Xcode 26.6에서 검증)
-- 개발 도구 설치 시 Homebrew 필요
+
+## 다운로드 및 설치
+
+[최신 릴리스](https://github.com/logone72/ram-monitor/releases/latest)에서 DMG를 다운로드한 뒤, **RAM Monitor.app**을 **Applications**로 옮겨 설치하세요. Xcode나 Homebrew를 설치할 필요는 없습니다.
+
+릴리스 빌드는 임시 서명(ad-hoc)되어 있으며 공증되지 않았습니다. 앱을 열려고 시도한 뒤 macOS가 실행을 차단하면 **시스템 설정 → 개인정보 보호 및 보안 → 확인 없이 열기**를 사용할 수 있습니다. 다운로드 출처를 신뢰하는 경우에만 진행하세요. 자세한 내용은 [Apple의 최초 실행 안내](https://support.apple.com/en-us/102445)를 참고하세요.
 
 ## 메모리 측정 방식
 
@@ -30,6 +34,8 @@ RAM Monitor는 서로 연관된 하위 프로세스를 하나의 작업 단위�
 
 로컬 개발에는 유료 Apple Developer 계정이나 서명 인증서가 필요하지 않습니다.
 
+소스에서 빌드하려면 `/Applications/Xcode.app`에 전체 Xcode 앱이 설치되어 있어야 합니다(Xcode 26.6에서 검증). 개발 도구 설치에는 Homebrew를 사용합니다.
+
 ```bash
 make build
 open RAMMonitor.xcodeproj
@@ -40,14 +46,6 @@ open RAMMonitor.xcodeproj
 ```bash
 open '.build/DerivedData/Build/Products/Debug/RAM Monitor.app'
 ```
-
-## 배포 상태
-
-로컬 테스트, 피드백 반영과 CI 검증을 마쳤습니다. 첫 공개 배포 전 최신 코드로 DMG를 다시 만들고 설치본을 확인해야 하며, 아직 다운로드할 수 있는 릴리스는 없습니다. 개인 Homebrew Tap 설치는 후속으로 제공할 예정입니다. 현재 [진행도](docs/tasks.md)를 확인하세요.
-
-릴리스 빌드는 임시 서명(ad-hoc)되어 있으며 공증되지 않았습니다. 앱을 열려고 시도한 뒤 macOS가 실행을 차단하면 **시스템 설정 → 개인정보 보호 및 보안 → 확인 없이 열기**를 사용할 수 있습니다. 다운로드 출처를 신뢰하는 경우에만 진행하세요. 자세한 내용은 [Apple의 최초 실행 안내](https://support.apple.com/en-us/102445)를 참고하세요.
-
-Universal 2 DMG 빌드와 게시 방법은 [배포 절차](docs/release.md)를 참고하세요.
 
 ## 개인정보 및 권한
 
@@ -69,6 +67,8 @@ make verify
 마우스·키보드 자동화 없이 검사하려면 `make check`와 `make test-unit`을 사용합니다. `make test-ui`와 `make verify`는 앱 창을 앞으로 가져오고 입력을 제어하는 UI 자동화를 포함하므로, Mac을 사용하지 않을 때 실행하세요.
 
 포맷 적용에는 `make format`을 사용합니다. Hook은 파일을 자동 수정하지 않습니다. 사양, 구조, 개발 계획은 [docs/index.md](docs/index.md)에 정리되어 있습니다.
+
+Universal 2 DMG 빌드와 게시 방법은 [배포 절차](docs/release.md)를 참고하세요.
 
 ## 라이선스
 

@@ -10,8 +10,12 @@ RAM Monitor is a native macOS utility that groups related subprocesses into one 
 
 - macOS 14 Sonoma or later
 - Apple Silicon or Intel Mac
-- Full Xcode app at `/Applications/Xcode.app` for development (verified with Xcode 26.6)
-- Homebrew for development tools
+
+## Download and install
+
+Download the DMG from the [latest release](https://github.com/logone72/ram-monitor/releases/latest), open it, and drag **RAM Monitor.app** to **Applications**. No Xcode or Homebrew installation is required.
+
+Release builds are ad-hoc signed and are not notarized. If macOS blocks the app after you try opening it, use **System Settings → Privacy & Security → Open Anyway**, only if you trust the download source. See [Apple's first-launch guidance](https://support.apple.com/en-us/102445).
 
 ## Memory modes
 
@@ -30,6 +34,8 @@ Hover a slice or legend entry to highlight it; selecting a list row highlights i
 
 No paid Apple Developer account or signing certificate is required for local development.
 
+Building from source requires the full Xcode app at `/Applications/Xcode.app` (verified with Xcode 26.6). Homebrew is used to install development tools.
+
 ```bash
 make build
 open RAMMonitor.xcodeproj
@@ -40,14 +46,6 @@ Run these commands from the repository root. Select the `RAMMonitor` scheme and 
 ```bash
 open '.build/DerivedData/Build/Products/Debug/RAM Monitor.app'
 ```
-
-## Release status
-
-Local testing, feedback improvements, and CI verification are complete. The latest DMG still needs to be rebuilt and checked before the first public release; no release download is available yet. Personal Homebrew Tap installation is planned as a follow-up. See [progress](docs/tasks.md).
-
-Release builds are ad-hoc signed and are not notarized. If macOS blocks the app after you try opening it, use **System Settings → Privacy & Security → Open Anyway**, only if you trust the download source. See [Apple's first-launch guidance](https://support.apple.com/en-us/102445).
-
-See [release instructions](docs/release.md) for Universal 2 DMG builds and publishing.
 
 ## Privacy and permissions
 
@@ -69,6 +67,8 @@ make verify
 For checks without mouse or keyboard automation, use `make check` and `make test-unit`. `make test-ui` and `make verify` include UI automation that brings app windows forward and controls input; run them when you are not using the Mac.
 
 Use `make format` to apply formatting; hooks do not rewrite files. See [docs/index.md](docs/index.md) for specifications, architecture, and the development plan.
+
+See [release instructions](docs/release.md) for Universal 2 DMG builds and publishing.
 
 ## License
 
