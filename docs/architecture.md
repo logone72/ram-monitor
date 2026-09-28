@@ -2,7 +2,7 @@
 
 ## 방향
 
-RAM Monitor는 `actor service + @Observable view model + SwiftUI views` 구조로 새로 구현한다. 단일 구현을 위한 protocol, factory, repository 계층은 만들지 않는다. 제품 사양은 `docs/`, 저수준 호출 사양은 [`system-api.md`](system-api.md)를 source of truth로 삼는다.
+RAM Monitor는 `actor service + @Observable view model + SwiftUI views` 구조를 사용한다. 단일 구현을 위한 protocol, factory, repository 계층은 만들지 않는다. 제품 사양은 `docs/`, 저수준 호출 사양은 [`system-api.md`](system-api.md)를 source of truth로 삼는다.
 
 ```text
 ProcessSampler actor
@@ -17,54 +17,7 @@ MonitorModel (@MainActor @Observable)
 SwiftUI MonitorView + SettingsView
 ```
 
-## 새 프로젝트 구조
-
-아래 경로는 이 저장소 루트를 기준으로 한다.
-
-```text
-AGENTS.md
-CLAUDE.md -> AGENTS.md
-.gitignore
-.swift-format
-.swiftlint.yml
-Brewfile
-Makefile
-.githooks/
-├── pre-commit
-└── commit-msg
-RAMMonitor.xcodeproj
-RAMMonitor/
-├── RAMMonitorApp.swift
-├── UITestSample.swift (Debug UI 테스트 전용)
-├── Models/
-│   └── MonitorModels.swift
-├── Services/
-│   ├── ProcessSampler.swift
-│   └── SnapshotBuilder.swift
-├── ViewModels/
-│   └── MonitorModel.swift
-└── Views/
-    ├── MonitorView.swift
-    ├── MemoryPieChart.swift
-    ├── ProcessGroupRow.swift
-    ├── SummaryScrollConfiguration.swift
-    └── SettingsView.swift
-RAMMonitorTests/
-├── SnapshotBuilderTests.swift
-├── MonitorModelTests.swift
-├── MemoryLayoutTests.swift
-├── LoginItemTests.swift
-└── ProcessSamplerIntegrationTests.swift
-RAMMonitorUITests/
-└── RAMMonitorUITests.swift
-scripts/
-└── build-release.sh
-.github/workflows/
-├── ci.yml
-└── release.yml
-LICENSE
-README.md
-```
+## 구성 원칙
 
 작은 표시 helper는 사용하는 View 파일 안에 둔다. 두 화면 이상에서 실제로 중복될 때만 별도 파일로 옮긴다.
 
@@ -82,17 +35,7 @@ README.md
 
 `actor ProcessSampler` 하나가 다음 상태와 시스템 호출을 소유한다.
 
-```swift
-actor ProcessSampler {
-  func sample() throws -> RawMonitorSample
-}
-
-struct RawMonitorSample: Sendable {
-  let processes: [ProcessSample]
-  let systemMemory: SystemMemorySample
-  let sampledAt: Date
-}
-```
+[`ProcessSampler.swift`](../RAMMonitor/Services/ProcessSampler.swift)와 수집 모델인 [`MonitorModels.swift`](../RAMMonitor/Models/MonitorModels.swift)를 따른다.
 
 - 프로세스 열거, 경로, PPID, 시작 시각
 - Physical Footprint, Resident Size, CPU 누적 시간, thread 수, architecture
@@ -106,36 +49,13 @@ struct RawMonitorSample: Sendable {
 
 시스템 호출 없이 입력을 결과 화면 모델로 바꾸는 순수 계산만 담당한다.
 
-```swift
-enum SnapshotBuilder {
-  static func build(
-    raw: RawMonitorSample,
-    metric: MemoryMetric,
-    topSliceCount: Int = 8
-  ) -> MonitorSnapshot
-}
-```
+함수 표면은 [`SnapshotBuilder.swift`](../RAMMonitor/Services/SnapshotBuilder.swift)를 따른다.
 
 그룹핑, 합계, subprocess 정렬, 파이 차트 회계는 이 함수로 모은다. 테스트는 합성 입력만 사용하므로 실행 중인 Mac의 상태에 영향을 받지 않는다.
 
 ### `MonitorModel.swift`
 
-```swift
-@Observable
-@MainActor
-final class MonitorModel {
-  var snapshot: MonitorSnapshot?
-  var searchText = ""
-  var sortOrder: SortOrder = .memory
-  var sortAscending = false
-  var expandedGroupIDs: Set<String> = []
-  var lastRefreshError: String?
-
-  func start()
-  func stop()
-  func refresh() async
-}
-```
+화면 상태와 갱신 API는 [`MonitorModel.swift`](../RAMMonitor/ViewModels/MonitorModel.swift)를 따른다.
 
 `MonitorModel`은 하나의 취소 가능한 `Task`로 갱신한다. 이전 갱신이 끝나기 전에 새 갱신을 겹쳐 실행하지 않는다. 설정이 바뀌면 현재 raw sample로 화면 snapshot을 즉시 다시 만들고 다음 주기부터 새 설정을 사용한다.
 

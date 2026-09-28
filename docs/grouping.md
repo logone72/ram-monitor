@@ -28,18 +28,7 @@ let groupID = bundleInfo?.bundleIdentifier ?? process.path
 
 ## 집계
 
-```swift
-struct ProcessGroup: Identifiable, Sendable {
-  let id: String
-  let displayName: String
-  let bundlePath: String?
-  let processes: [ProcessSample]
-  let totalPhysicalFootprintBytes: UInt64?
-  let totalResidentSizeBytes: UInt64?
-  let totalCPUPercent: Double?
-  let totalThreads: Int32?
-}
-```
+그룹 모델의 필드 정의는 [`MonitorModels.swift`](../RAMMonitor/Models/MonitorModels.swift)의 `ProcessGroup`을 따른다.
 
 - 합계는 측정에 성공한 값만 더한다.
 - 모든 하위 값이 `nil`이면 그룹 합계도 `nil`이다.

@@ -4,10 +4,10 @@ macOS 14+에서 subprocess를 작업 단위로 묶어 RAM과 CPU를 보여주는
 
 ## Source of truth
 
-- 제품과 기술 계약: `docs/`
-- 진행 상태: `docs/tasks.md`
-- 초기 구현 순서·기록: `docs/implementation.md` (현행 구현은 연결된 소스, 완료 판정은 `docs/quality.md`)
-- 시스템 호출 계약: `docs/system-api.md`
+- 동작 변경 전 관련 사양 선택: `docs/index.md`
+- 작업 선택·진행도 갱신: `docs/tasks.md`
+- 변경 검증·완료 판정: `docs/quality.md`
+- 시스템 수집 변경 시 SDK·오류 처리 계약: `docs/system-api.md`
 
 ## Commands
 

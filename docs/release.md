@@ -1,10 +1,10 @@
-# 배포 계획
+# 배포 절차
 
 ## V1: 유료 Apple Developer 가입 없이 배포
 
 배포 산출물은 Universal 2 `RAM Monitor.app`을 담은 DMG 하나다.
 
-[첫 공개 Release 0.1.0](https://github.com/logone72/ram-monitor/releases/tag/v0.1.0)을 게시했다. 개인 Homebrew Tap은 아직 게시하지 않았다. 현재 진행도는 [`tasks.md`](tasks.md)를 따른다.
+현재 배포 상태와 남은 작업은 [`tasks.md`](tasks.md)를 따른다.
 
 ```text
 Git tag vX.Y.Z
@@ -49,27 +49,7 @@ DMG 배경 이미지와 별도 installer는 만들지 않는다.
 
 ### 개인 Homebrew Tap
 
-```ruby
-cask "ram-monitor" do
-  version "X.Y.Z"
-  sha256 "RELEASE_SHA256"
-
-  url "https://github.com/logone72/ram-monitor/releases/download/v#{version}/RAM-Monitor-#{version}.dmg"
-  name "RAM Monitor"
-  desc "RAM-focused process monitor with grouped subprocesses"
-  homepage "https://github.com/logone72/ram-monitor"
-
-  depends_on macos: :sonoma
-
-  app "RAM Monitor.app"
-
-  caveats <<~EOS
-    This build is not notarized. If macOS blocks it after you try opening it,
-    use System Settings > Privacy & Security > Open Anyway.
-    Only proceed if you trust the source of this download.
-  EOS
-end
-```
+cask 템플릿은 [`build-release.sh`](../scripts/build-release.sh)에서 관리한다.
 
 Tap 공개 후 사용자 설치 명령:
 
@@ -80,7 +60,7 @@ brew install --cask ram-monitor
 
 `logone72/homebrew-tap`은 GitHub Release 이후 후속 배포 작업에서 생성한다. Release 게시 전 `logone72/ram-monitor`를 공개로 전환하고, 게시 후 cask URL이 인증 없이 다운로드되는지 확인한다.
 
-스크립트가 생성한 `release/ram-monitor.rb`를 Tap의 `Casks/ram-monitor.rb`로 복사한다. 이 파일은 같은 실행에서 만든 DMG의 실제 SHA-256을 포함하므로 다른 빌드의 checksum을 재사용하지 않는다.
+게시된 GitHub Release에 첨부된 `ram-monitor.rb`를 Tap의 `Casks/ram-monitor.rb`로 복사한다. 게시된 DMG와 `SHA256SUMS`의 일치를 확인하고, 로컬에서 별도로 빌드한 DMG의 checksum을 사용하지 않는다. Tap의 style·audit 검사와 실제 설치·실행을 확인해야 배포 완료로 판정한다.
 
 ## V2: Developer ID 가입 후
 

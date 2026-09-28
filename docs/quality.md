@@ -1,4 +1,4 @@
-# 검증 계획
+# 검증 기준
 
 ## 합격 기준
 
@@ -81,11 +81,11 @@ Activity Monitor와 그룹 경계가 같은 안정된 앱은 Physical Footprint 
 ```bash
 lipo -archs 'release/RAM Monitor.app/Contents/MacOS/RAM Monitor'
 codesign --verify --deep --strict --verbose=2 'release/RAM Monitor.app'
-hdiutil verify 'release/RAM-Monitor.dmg'
-shasum -a 256 'release/RAM-Monitor.dmg'
+hdiutil verify 'release/RAM-Monitor-X.Y.Z.dmg'
+(cd release && shasum -a 256 -c SHA256SUMS)
 ```
 
-필수 결과:
+`X.Y.Z`는 검증할 버전으로 바꾼다. 필수 결과:
 
 - `lipo`: `arm64 x86_64`
 - `codesign`: ad-hoc 서명 무결성 통과

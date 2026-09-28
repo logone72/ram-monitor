@@ -101,6 +101,10 @@ make verify
 
 ## CI 합격 조건
 
+로컬 통과와 원격 CI 통과는 별도로 확인한다. Toolchain 변경은 해당 CI 환경의 전체 검증으로 판정한다.
+
+`SettingsView.launchAtLoginBinding`의 setter는 명시적 클로저를 유지한다. 메서드 직접 전달은 Swift 6.3.3 IRGen 크래시를 유발했으며, 단순화하려면 해당 toolchain에서 재검증한다. 근거: [Swift #82491](https://github.com/swiftlang/swift/issues/82491).
+
 `.github/workflows/ci.yml`은 `pull_request`와 `main` push에서 실행한다.
 
 1. 저장소 checkout

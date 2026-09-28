@@ -17,7 +17,7 @@ RAM Monitor는 macOS의 개별 프로세스를 그대로 나열하지 않고, �
 | Bundle ID | `com.roegankim.RAMMonitor` |
 | 지원 OS | macOS 14 Sonoma 이상 |
 | 아키텍처 | Universal 2 (`arm64`, `x86_64`) |
-| 공개 방식 | V1 release 전에 `logone72/ram-monitor`를 공개 전환 |
+| 공개 방식 | 공개 GitHub 저장소와 Release |
 | 라이선스 | MIT, `Copyright (c) 2026 Roegan Kim (logone72)` |
 
 배포 URL과 Tap 소유자는 `logone72`, Bundle ID는 `com.roegankim.RAMMonitor`를 유지한다. 저작권 표기는 LICENSE의 `Roegan Kim (logone72)`를 따른다.

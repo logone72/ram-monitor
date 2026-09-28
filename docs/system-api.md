@@ -53,25 +53,7 @@ let processPathCapacity = Int(MAXPATHLEN) * 4
 
 ## 공개 표면과 내부 상태
 
-```swift
-actor ProcessSampler {
-  func sample() throws -> RawMonitorSample
-}
-
-enum SamplingError: Error, Sendable {
-  case processEnumerationFailed(errno: Int32)
-  case invalidPIDBufferSize
-  case invalidSystemMemoryValue
-}
-```
-
-actor가 소유하는 가변 상태는 세 개다.
-
-```swift
-private var previousCPU: [ProcessSample.Identity: CPUTimeSnapshot] = [:]
-private var bundleCache: [String: BundleIdentity] = [:]
-private var processInfoCache: [ProcessSample.Identity: StableProcessInfo] = [:]
-```
+공개 API·오류 타입·캐시 선언은 [`ProcessSampler.swift`](../RAMMonitor/Services/ProcessSampler.swift)를 따른다. 상태별 수명과 책임은 다음과 같다.
 
 - `previousCPU`: CPU delta 계산용이며 매 성공 주기마다 사라진 identity를 제거한다.
 - `bundleCache`: 성공한 Bundle 해석만 실행 경로로 캐시한다. 실패를 캐시하기 위한 별도 enum은 만들지 않는다.
