@@ -146,8 +146,9 @@ cask "ram-monitor" do
   app "RAM Monitor.app"
 
   caveats <<~EOS
-    This build is not notarized. On first launch, right-click RAM Monitor,
-    choose Open, and confirm Open. You can also use Privacy & Security > Open Anyway.
+    This build is not notarized. If macOS blocks it after you try opening it,
+    use System Settings > Privacy & Security > Open Anyway.
+    Only proceed if you trust the source of this download.
   EOS
 end
 EOF

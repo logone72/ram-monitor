@@ -43,9 +43,9 @@ open '.build/DerivedData/Build/Products/Debug/RAM Monitor.app'
 
 ## Release status
 
-The first public release is pending local testing and feedback improvements. DMG downloads and personal Homebrew Tap installation are planned. See [progress](docs/tasks.md).
+Local testing, feedback improvements, and CI verification are complete. The latest DMG still needs to be rebuilt and checked before the first public release; no release download is available yet. Personal Homebrew Tap installation is planned as a follow-up. See [progress](docs/tasks.md).
 
-Release builds are ad-hoc signed and are not notarized. macOS may require approval in **System Settings → Privacy & Security** before launch.
+Release builds are ad-hoc signed and are not notarized. If macOS blocks the app after you try opening it, use **System Settings → Privacy & Security → Open Anyway**, only if you trust the download source. See [Apple's first-launch guidance](https://support.apple.com/en-us/102445).
 
 See [release instructions](docs/release.md) for Universal 2 DMG builds and publishing.
 
@@ -65,6 +65,8 @@ make verify
 ```
 
 `make verify` is the single quality gate. It runs swift-format, SwiftLint, whitespace checks, build, unit and UI tests with coverage, and Xcode Analyze. Git hooks run formatting and lint checks before each commit and enforce conventional commit prefixes.
+
+For checks without mouse or keyboard automation, use `make check` and `make test-unit`. `make test-ui` and `make verify` include UI automation that brings app windows forward and controls input; run them when you are not using the Mac.
 
 Use `make format` to apply formatting; hooks do not rewrite files. See [docs/index.md](docs/index.md) for specifications, architecture, and the development plan.
 

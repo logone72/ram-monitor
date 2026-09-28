@@ -43,9 +43,9 @@ open '.build/DerivedData/Build/Products/Debug/RAM Monitor.app'
 
 ## 배포 상태
 
-첫 공개 배포에 앞서 로컬 테스트와 피드백 반영을 진행하는 단계입니다. DMG 다운로드와 개인 Homebrew Tap 설치를 제공할 예정입니다. 현재 [진행도](docs/tasks.md)를 확인하세요.
+로컬 테스트, 피드백 반영과 CI 검증을 마쳤습니다. 첫 공개 배포 전 최신 코드로 DMG를 다시 만들고 설치본을 확인해야 하며, 아직 다운로드할 수 있는 릴리스는 없습니다. 개인 Homebrew Tap 설치는 후속으로 제공할 예정입니다. 현재 [진행도](docs/tasks.md)를 확인하세요.
 
-릴리스 빌드는 임시 서명(ad-hoc)되어 있으며 공증되지 않았습니다. 실행 시 **시스템 설정 → 개인정보 보호 및 보안**에서 허용이 필요할 수 있습니다.
+릴리스 빌드는 임시 서명(ad-hoc)되어 있으며 공증되지 않았습니다. 앱을 열려고 시도한 뒤 macOS가 실행을 차단하면 **시스템 설정 → 개인정보 보호 및 보안 → 확인 없이 열기**를 사용할 수 있습니다. 다운로드 출처를 신뢰하는 경우에만 진행하세요. 자세한 내용은 [Apple의 최초 실행 안내](https://support.apple.com/en-us/102445)를 참고하세요.
 
 Universal 2 DMG 빌드와 게시 방법은 [배포 절차](docs/release.md)를 참고하세요.
 
@@ -65,6 +65,8 @@ make verify
 ```
 
 `make verify`는 전체 품질 검사 명령입니다. swift-format, SwiftLint, 공백 검사, 빌드, 코드 커버리지를 포함한 단위 및 UI 테스트, Xcode Analyze를 실행합니다. Git hook은 커밋 전에 포맷과 린트 검사를 실행하며 Conventional Commits 접두사를 검사합니다.
+
+마우스·키보드 자동화 없이 검사하려면 `make check`와 `make test-unit`을 사용합니다. `make test-ui`와 `make verify`는 앱 창을 앞으로 가져오고 입력을 제어하는 UI 자동화를 포함하므로, Mac을 사용하지 않을 때 실행하세요.
 
 포맷 적용에는 `make format`을 사용합니다. Hook은 파일을 자동 수정하지 않습니다. 사양, 구조, 개발 계획은 [docs/index.md](docs/index.md)에 정리되어 있습니다.
 

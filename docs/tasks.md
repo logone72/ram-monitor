@@ -6,8 +6,8 @@
 
 - 구현: `8 / 9`
 - 현재 작업: Task 9 — Universal DMG와 개인 Tap release
-- 다음 작업: CI SDK 환경 수정본의 원격 재검증 → 0.1.0 DMG 설치본 사용자 최종 확인 → 별도 승인 후 공개 Release·Tap 배포
-- 마지막 갱신: 2026-09-16
+- 다음 작업: 최신 코드로 0.1.0 DMG 재생성·검증 → 설치본 사용자 최종 확인 → 별도 승인 후 공개 Release·Tap 배포
+- 마지막 갱신: 2026-09-28
 
 상태는 `대기`, `진행 중`, `차단`, `완료`만 사용한다. 한 번에 하나의 Task만 `진행 중`으로 두고, 해당 Task의 검사와 `make verify`가 모두 통과한 뒤 `완료`로 바꾼다. Task 상태가 바뀌면 이 문서와 [`index.md`](index.md)의 요약을 함께 갱신한다.
 
@@ -29,7 +29,8 @@
 
 - [x] 사용자가 로컬 앱을 직접 실행하고 주요 동작을 확인한다.
 - [x] 확인된 피드백을 반영한다.
-- [x] 변경 후 `make verify`와 로컬 DMG 검증을 다시 통과한다.
+- [x] 변경 후 `make verify`와 원격 CI를 통과한다 (`7793c9f`).
+- [ ] 최신 코드로 DMG를 재생성하고 검증한다 (기존 DMG 검증 이후 코드 변경 반영).
 - [ ] 생성된 DMG 설치본을 사용자가 최종 확인한다.
 - [ ] 위 단계가 끝난 뒤 공개 GitHub Release와 personal Tap 배포를 진행한다.
 
@@ -247,5 +248,15 @@ UI 재검증에서는 테스트 실행 조건 두 곳을 보완했다. 초기 �
 - `5d8ed0c`의 CI `35191330847`은 포맷·lint 이후 `SettingsView.swift`의 함수 변환 코드 생성 중 Swift 6.3.3 컴파일러가 크래시했다. 직전 `3c54877`은 같은 Xcode 26.6 / Swift 6.3.3에서 전체 검증을 통과했다.
 - `launchAtLoginBinding`의 setter를 메서드 직접 전달에서 명시적 클로저 호출로 변경했다. 로그인 등록·해제 로직과 OS 상태 조회, CI·Release 도구 버전, 시스템 CLT 설정은 유지한다. 동일 패턴의 [Swift 이슈 #82491](https://github.com/swiftlang/swift/issues/82491)를 코드 주석에 남겼다.
 - 로컬 Swift 6.4에서 `make check build test-unit analyze` 통과: 빌드, 단위·통합 37개, 포맷·lint·whitespace·배포 스크립트 구문 검사, 정적 분석. UI 테스트는 이번 수정 후 재실행하지 않았다.
-- 컴파일러 크래시는 기존 CI 빌드 단계로 검증한다. 로컬에 Swift 6.3.3이 없어 수정 전후 재현을 확인하지 못했으므로, 원격 CI 통과 전에는 해결 확정으로 간주하지 않는다. 커밋·push·배포는 수행하지 않았다.
+- 후속 확인: 수정 커밋 `7793c9f`를 push한 뒤 [원격 CI 35193024496](https://github.com/logone72/ram-monitor/actions/runs/35193024496)가 성공했다. Xcode 26.6 / Swift 6.3.3에서 빌드와 전체 검증(단위·통합 37개, UI 15개)이 통과해 컴파일러 크래시 대응을 확인했다. 공개 Release는 아직 없다 (2026-09-28 확인).
 - 변경 파일: `RAMMonitor/Views/SettingsView.swift`, `docs/index.md`, `docs/tasks.md`.
+
+### 공개 전 문서 정리 (2026-09-28)
+
+- [x] 영문·한국어 README의 배포 상태, UI 테스트 입력 제어 안내, 최초 실행 안내 갱신
+- [x] 원격 CI 성공을 진행도에 반영하고 최신 DMG 재생성·설치 확인을 남은 작업으로 구분
+- [x] 제품 문서와 앱 저작권 메타데이터를 LICENSE의 `Roegan Kim (logone72)`로 통일
+- [x] Release 태그 게시 자동화와 후속 Tap 수동 작업 구분, cask 생성 안내 동기화
+- [x] 실제 앱의 Resident Size 화면으로 `screenshot.png` 교체 — 측정 프로세스 합계, 별도 물리 RAM 요약, 차트·목록 값 일치 확인
+
+검증: `make check build`, Xcode 프로젝트 구문 검사와 빌드된 앱의 저작권 메타데이터 확인 통과. UI 테스트·DMG 재생성·커밋·push·공개 전환은 수행하지 않았다.

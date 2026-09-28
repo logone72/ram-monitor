@@ -4,6 +4,8 @@
 
 배포 산출물은 Universal 2 `RAM Monitor.app`을 담은 DMG 하나다.
 
+현재 첫 공개 Release는 없으며, 최신 코드의 DMG 재생성·설치본 최종 확인이 남아 있다. 현재 진행도는 [`tasks.md`](tasks.md)를 따른다.
+
 ```text
 Git tag vX.Y.Z
   → make verify
@@ -12,10 +14,16 @@ Git tag vX.Y.Z
   → RAM-Monitor-X.Y.Z.dmg
   → SHA-256
   → GitHub Release
-  → 개인 homebrew-tap의 ram-monitor cask 갱신
+  → 개인 homebrew-tap의 ram-monitor cask 수동 갱신 (후속)
 ```
 
 Apple은 서명하지 않은 macOS 앱을 직접 복사해 배포하는 방식도 제공하지만, Developer ID와 notarization이 없으면 Gatekeeper의 신뢰 확인을 받을 수 없다. V1은 이 제한을 README와 DMG 설치 안내에 명확히 적는다.
+
+### 게시 자동화와 최초 실행
+
+[`release.yml`](../.github/workflows/release.yml)은 `vX.Y.Z` 태그 push 시 검증·DMG 빌드·GitHub Release 게시를 실행한다. 릴리스 노트는 `--generate-notes`로 자동 생성한다. 태그 push는 실제 게시를 시작하므로 공개 배포 승인 후에만 진행한다. Tap 갱신은 이 자동화에 포함되지 않는다.
+
+DMG에서 앱을 Applications로 복사한 뒤 실행한다. macOS가 실행을 차단하면 앱을 열려고 시도한 뒤 **시스템 설정 → 개인정보 보호 및 보안 → 확인 없이 열기**에서 허용할 수 있다. 다운로드 출처를 신뢰할 때만 진행하며, 시스템 보안 설정을 일괄 해제하지 않는다. [Apple 최초 실행 안내](https://support.apple.com/en-us/102445)를 참고한다.
 
 ### 산출물
 
@@ -56,20 +64,21 @@ cask "ram-monitor" do
   app "RAM Monitor.app"
 
   caveats <<~EOS
-    This build is not notarized. On first launch, right-click RAM Monitor,
-    choose Open, and confirm Open. You can also use Privacy & Security > Open Anyway.
+    This build is not notarized. If macOS blocks it after you try opening it,
+    use System Settings > Privacy & Security > Open Anyway.
+    Only proceed if you trust the source of this download.
   EOS
 end
 ```
 
-사용자 설치 명령:
+Tap 공개 후 사용자 설치 명령:
 
 ```bash
 brew tap logone72/tap
 brew install --cask ram-monitor
 ```
 
-`logone72/homebrew-tap`은 V1 release 작업에서 생성한다. release를 만들기 전에 `logone72/ram-monitor`를 공개로 전환하고 cask URL이 인증 없이 다운로드되는지 확인한다.
+`logone72/homebrew-tap`은 GitHub Release 이후 후속 배포 작업에서 생성한다. Release 게시 전 `logone72/ram-monitor`를 공개로 전환하고, 게시 후 cask URL이 인증 없이 다운로드되는지 확인한다.
 
 스크립트가 생성한 `release/ram-monitor.rb`를 Tap의 `Casks/ram-monitor.rb`로 복사한다. 이 파일은 같은 실행에서 만든 DMG의 실제 SHA-256을 포함하므로 다른 빌드의 checksum을 재사용하지 않는다.
 
